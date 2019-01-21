@@ -1,0 +1,96 @@
+name:                StillGood
+version:             0.1.0.0
+github:              "jallibad/StillGood"
+# license:             BSD3
+# author:              "Author name here"
+# maintainer:          "example@example.com"
+# copyright:           "2019 Author name here"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+description:         Please see the README on GitHub at <https://github.com/jallibad/StillGood#readme>
+
+ghc-options:
+- -Wall
+- -fno-warn-tabs
+- -Werror
+- -threaded
+- -rtsopts
+- -with-rtsopts=-N
+
+dependencies:
+- base >= 4.7 && < 5
+- megaparsec
+- aeson
+- text
+- unordered-containers
+- bytestring
+
+default-extensions:
+- TupleSections
+- LambdaCase
+- MultiWayIf
+- TypeOperators
+- OverloadedStrings
+- OverloadedLists
+- ViewPatterns
+- PatternSynonyms
+- ExplicitForAll
+- TypeApplications
+- ScopedTypeVariables
+- RankNTypes
+- LiberalTypeSynonyms
+- NamedFieldPuns
+- RecordWildCards
+- FlexibleInstances
+- FlexibleContexts
+- DeriveFunctor
+- DeriveFoldable
+- DeriveTraversable
+- GeneralizedNewtypeDeriving
+- InstanceSigs
+- ConstrainedClassMethods
+- MultiParamTypeClasses
+- FunctionalDependencies
+- DeriveGeneric
+- NamedWildCards
+- PartialTypeSignatures
+- ExistentialQuantification
+- GADTSyntax
+- GADTs
+- TypeFamilies
+- TypeFamilyDependencies
+- AllowAmbiguousTypes
+- KindSignatures
+- ConstraintKinds
+- DataKinds
+- PolyKinds
+- TypeInType
+- EmptyCase
+- StandaloneDeriving
+- DefaultSignatures
+- DeriveAnyClass
+- DerivingStrategies
+- DisambiguateRecordFields
+- DuplicateRecordFields
+- OverloadedLabels
+- BangPatterns
+- ApplicativeDo
+- NegativeLiterals
+- NumDecimals
+- BinaryLiterals
+- QuasiQuotes
+- UnicodeSyntax
+- NoMonomorphismRestriction
+- PostfixOperators
+- PackageImports
+
+executables:
+  StillGood:
+    main:                Main.hs
+    source-dirs:         src
