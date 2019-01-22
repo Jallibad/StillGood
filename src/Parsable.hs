@@ -6,6 +6,7 @@ module Parsable
 
 import Control.Applicative (liftA2)
 import Control.Monad (void)
+import Data.Foldable (foldr')
 import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -25,7 +26,7 @@ class Parsable a where
 	parser :: Parser a
 
 instance Parsable Identifier where
-	parser = cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
+	parser = label "identifier" $ cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
 
 -- |Modifies a parser to surround the contents with parentheses
 parens :: Parser a -> Parser a
@@ -39,21 +40,26 @@ lambdaDeclarator :: Parser ()
 lambdaDeclarator = void $ cts $ single '\\'
 
 -- |A parser matching the separator "->" between the arguments of a lambda and the body
-lambdaArgSeparator :: Parser ()
-lambdaArgSeparator = label "lambda separator \"->\"" $ void $ cts $ chunk "->"
+lambdaBodySeparator :: Parser ()
+lambdaBodySeparator = label "lambda separator \"->\"" $ void $ cts $ chunk "->"
 
 lambda :: Parser Expression
-lambda = cts $ do
-	lambdaDeclarator
-	var <- parser
-	lambdaArgSeparator
-	Lambda var <$> parser
+lambda = combineArgsAndBody args body
+	where
+		combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
+		combineArgsAndBody = liftA2 (flip $ foldr' Lambda)
+		
+		args :: Parser [Identifier]
+		args = lambdaDeclarator *> some parser
+
+		body :: Parser Expression
+		body = lambdaBodySeparator *> parser
 
 builtIn :: Parser Expression
 builtIn = BuiltIn <$> (some digitChar <|> chunk "+" <|> chunk "-")
 
 instance Parsable Expression where
-	parser = foldl1 Application <$> some term
+	parser = label "expression" $ foldl1 Application <$> some term
 		where
 			term =
 				parens parser <|>

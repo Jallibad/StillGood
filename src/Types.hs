@@ -1,7 +1,7 @@
 module Types where
 
 import Data.Aeson
-import GHC.Generics
+import GHC.Generics (Generic)
 
 newtype Identifier = Identifier String deriving (Generic)
 deriving instance Show Identifier
