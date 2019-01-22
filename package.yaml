@@ -1,6 +1,6 @@
 name:                StillGood
 version:             0.1.0.0
-github:              "jallibad/StillGood"
+github:              "Jallibad/StillGood"
 # license:             BSD3
 # author:              "Author name here"
 # maintainer:          "example@example.com"
@@ -13,7 +13,7 @@ extra-source-files:
 # synopsis:            Short description of your package
 # category:            Web
 
-description:         Please see the README on GitHub at <https://github.com/jallibad/StillGood#readme>
+description:         Please see the README on GitHub at <https://github.com/Jallibad/StillGood#readme>
 
 ghc-options:
 - -Wall
