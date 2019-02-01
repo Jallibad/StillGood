@@ -3,62 +3,21 @@ module HindleyMilner where
 import Control.Applicative (liftA2)
 import Control.Monad.Except
 import Control.Monad.State
-import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Types
 import HindleyMilner.Type
 import HindleyMilner.Substitution
-
-newtype Unique = Unique {count :: Int}
-
-initUnique :: Unique
-initUnique = Unique 0
+import HindleyMilner.Infer
 
 extend :: Environment -> (Identifier, Scheme) -> Environment
-extend (Environment env) (x, s) = Environment $ Map.insert x s env
-
-type Infer a = ExceptT TypeError (State Unique) a
-
-runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
-runInfer m = case evalState (runExceptT m) initUnique of
-	Left err -> Left err
-	Right res -> Right $ closeOver res
-
-compose :: Subst -> Subst -> Subst
-s1 `compose` s2 = fmap (apply s1) s2 `Map.union` s1
-
-empty :: Environment
-empty = Environment Map.empty
-
-closeOver :: (Map Identifier Type, Type) -> Scheme
-closeOver (sub, ty) = normalize $ generalize empty $ apply sub ty
-
-letters :: [String]
-letters = [1..] >>= flip replicateM ['a'..'z']
+extend env (x, s) = Map.insert x s env
 
 instantiate :: Scheme -> Infer Type
 instantiate (Forall as t) = do
 	as' <- mapM (const fresh) as
 	let s = Map.fromList $ zip as as'
 	pure $ apply s t
-
-generalize :: Environment -> Type -> Scheme
-generalize env t = Forall as t
-	where as = Set.toList $ freeVars t `Set.difference` freeVars env
-
-ord :: Type -> [(Identifier, Identifier)]
-ord body = zip (Set.toList $ freeVars body) (fmap Identifier letters)
-
-normalize :: Scheme -> Scheme
-normalize (Forall _ body) = Forall (snd <$> ord body) (normtype body)
-	where
-		normtype :: Type -> Type
-		normtype (a `Arrow` b) = Arrow (normtype a) (normtype b)
-		normtype (Constructor a) = Constructor a
-		normtype (HindleyMilner.Type.Variable a) = case lookup a (ord body) of
-			Just x -> HindleyMilner.Type.Variable x
-			Nothing -> error "type variable not in signature"
 
 occurs :: Substitutable a => Identifier -> a -> Bool
 occurs a = Set.member a . freeVars
@@ -99,7 +58,7 @@ infer env = \case
 	_ -> undefined
 
 lookupEnv :: Environment -> Identifier -> Infer (Subst, Type)
-lookupEnv (Environment env) x = case Map.lookup x env of
+lookupEnv env x = case Map.lookup x env of
 	Nothing -> throwError $ UnboundVariable $ show x
 	Just s -> do
 		t <- instantiate s
