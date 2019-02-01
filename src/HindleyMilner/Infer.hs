@@ -1,12 +1,13 @@
 module HindleyMilner.Infer where
 
+import Control.Applicative (liftA2)
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Map.Strict (Map)
 import qualified Data.Set as Set
 import HindleyMilner.Substitution
 import HindleyMilner.Type
-import Types
+import Types hiding (Variable)
 
 newtype Unique = Unique {count :: Int}
 
@@ -34,15 +35,17 @@ generalize env t = Forall as t
 ord :: Type -> [(Identifier, Identifier)]
 ord body = zip (Set.toList $ freeVars body) (fmap Identifier letters)
 
-normtype :: [(Identifier, Identifier)] -> Type -> Type
-normtype l (a `Arrow` b) = Arrow (normtype l a) (normtype l b)
-normtype _ (Constructor a) = Constructor a
-normtype l (HindleyMilner.Type.Variable a) = case lookup a l of
-	Just x -> HindleyMilner.Type.Variable x
-	Nothing -> error "type variable not in signature"
+-- |Uses the given lookup function to replace each type variable with a corresponding one.
+-- Intended to be specialized to Maybe
+replaceVariables :: Applicative f => (Identifier -> f Identifier) -> Type -> f Type
+replaceVariables f (a `Arrow` b) = liftA2 Arrow (replaceVariables f a) (replaceVariables f b)
+replaceVariables _ (Constructor a) = pure $ Constructor a
+replaceVariables f (Variable a) = Variable <$> f a
 
 -- |Reset the bound type variables (maybe we've bound ['a','d','z']) to our list of fresh variables ['a','b','c']
--- example: @normalize (Forall [Identifier "b"] $ HindleyMilner.Type.Variable $ Identifier "b")@
+-- example: @normalize (Forall [Identifier "b"] $ Variable $ Identifier "b")@
 normalize :: Scheme -> Scheme
-normalize (Forall _ body) = Forall (snd <$> subst) (normtype subst body)
-	where subst = ord body
+normalize (Forall _ body) = Forall (snd <$> subst) replacement
+	where
+		subst = ord body
+		Just replacement = replaceVariables (`lookup` subst) body
