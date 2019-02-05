@@ -7,7 +7,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Set as Set
 import HindleyMilner.Substitution
 import HindleyMilner.Type
-import Types hiding (Variable)
+import Identifier
 
 newtype Unique = Unique {count :: Int}
 

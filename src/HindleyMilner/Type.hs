@@ -1,8 +1,10 @@
 module HindleyMilner.Type where
 
+import AST.Identifier
+import Data.Aeson
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty)
-import Types (Identifier)
+import GHC.Generics (Generic)
 
 data TypeError
 	= UnificationFail Type Type
@@ -14,7 +16,10 @@ data Type
 	= Variable Identifier
 	| Constructor String
 	| Arrow Type Type
-	deriving (Show, Eq, Ord)
+	deriving (Generic, Show, Eq, Ord)
+instance ToJSON Type where
+	toEncoding = genericToEncoding defaultOptions
+instance FromJSON Type
 
 data Scheme = Forall [Identifier] Type deriving (Show)
 

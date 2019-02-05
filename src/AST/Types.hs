@@ -1,17 +1,14 @@
-module Types where
+module AST.Types where
 
+import AST.Identifier
 import Data.Aeson
 import GHC.Generics (Generic)
-
-newtype Identifier = Identifier String deriving (Generic, Eq, Ord)
-deriving instance Show Identifier
-instance ToJSON Identifier where
-	toEncoding = genericToEncoding defaultOptions
-instance FromJSON Identifier
+import HindleyMilner.Type (Type)
 
 data Expression = Variable {identifier :: Identifier}
 				| Lambda {argument :: Identifier, body :: Expression}
 				| Application {function :: Expression, body :: Expression}
+				| ExplicitType {annotation :: Type, expression :: Expression}
 				| BuiltIn String
 				deriving (Generic, Show)
 instance ToJSON Expression where
