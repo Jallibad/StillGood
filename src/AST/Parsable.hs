@@ -10,6 +10,7 @@ import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Foldable (foldr')
 import Data.Void (Void)
+import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -28,6 +29,15 @@ class Parsable a where
 
 instance Parsable Identifier where
 	parser = label "identifier" $ cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
+
+instance Parsable Type where
+	parser = undefined
+
+typeDeclarator :: Parser ()
+typeDeclarator = void $ cts $ string "::"
+
+explicitType :: Parser Expression
+explicitType = ExplicitType <$> parser <* typeDeclarator <*> parser
 
 -- |Modifies a parser to surround the contents with parentheses
 parens :: Parser a -> Parser a
@@ -65,6 +75,7 @@ instance Parsable Expression where
 		where
 			term =
 				parens parser <|>
+				explicitType <|>
 				lambda <|>
 				builtIn <|>
 				variable
