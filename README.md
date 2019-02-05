@@ -4,10 +4,10 @@ StillGood is a new programming language, designed to capitalize on the strengths
 
 ## Setup
 
-(for now)
+(setup for developers, for now)
 
 1. Install [Stack](https://docs.haskellstack.org/en/stable/README/)
 2. Clone this repository
 3. In repository, run `stack build`
-4. Run `stack exec StillGood test.txt`
+4. Run `stack exec StillGood filename` where 'filename' is your test program.
 5. Alternatively you can run `stack ghci` to work with GHC's interactive environment.
