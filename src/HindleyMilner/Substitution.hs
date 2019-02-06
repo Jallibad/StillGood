@@ -1,6 +1,7 @@
 module HindleyMilner.Substitution where
 
 import AST.Identifier
+import Control.Applicative (liftA2)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -22,7 +23,11 @@ class Substitutable a where
 	apply :: Subst -> a -> a
 	-- |Query for free variables, potentially recursively
 	freeVars :: a -> Set Identifier
-	
+	-- |Query for occurence of specified free variable in expression
+	occurs :: Substitutable a => Identifier -> a -> Bool
+	occurs a = Set.member a . freeVars
+	changeVariables :: Applicative f => (Identifier -> f Identifier) -> a -> f a
+
 instance Substitutable Type where
 	-- A type constructor contains nothing substitutable (base case)
 	apply _ (Constructor a) = Constructor a
@@ -38,6 +43,11 @@ instance Substitutable Type where
 	-- A function application contains two subexpression with free variables
 	freeVars (t1 `Arrow` t2) = freeVars t1 `Set.union` freeVars t2
 
+	changeVariables :: Applicative f => (Identifier -> f Identifier) -> Type -> f Type
+	changeVariables f (a `Arrow` b) = liftA2 Arrow (changeVariables f a) (changeVariables f b)
+	changeVariables _ (Constructor a) = pure $ Constructor a
+	changeVariables f (Variable a) = Variable <$> f a
+
 instance Substitutable Scheme where
 	apply s (Forall as t) = Forall as $ apply (foldr Map.delete s as) t
 	freeVars (Forall as t) = freeVars t `Set.difference` Set.fromList as
@@ -47,6 +57,7 @@ instance Substitutable Scheme where
 instance (Functor f, Foldable f, Substitutable a) => Substitutable (f a) where
 	apply = fmap . apply
 	freeVars = foldr (Set.union . freeVars) Set.empty
+	-- changeVariables f xs = joinchangeVariables f <$> xs
 
 -- instance Substitutable Environment where
 -- 	apply s (Environment env) = Environment $ fmap (apply s) env

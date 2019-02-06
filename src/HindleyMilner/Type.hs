@@ -9,12 +9,12 @@ import GHC.Generics (Generic)
 data TypeError
 	= UnificationFail Type Type
 	| InfiniteType Identifier Type
-	| UnboundVariable String
+	| UnboundVariable Identifier
 	deriving (Show)
 
 data Type
 	= Variable Identifier
-	| Constructor String
+	| Constructor Identifier
 	| Arrow Type Type
 	deriving (Generic, Show, Eq, Ord)
 instance ToJSON Type where
