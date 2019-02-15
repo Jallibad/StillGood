@@ -19,7 +19,7 @@ type Parser = Parsec Void String
 sc :: Parser ()
 sc = L.space space1 lineCmnt blockCmnt where
 	lineCmnt = L.skipLineComment "--"
-  	blockCmnt = L.skipBlockComment "{-" "-}"
+  	blockCmnt = L.skipBlockComment "/*" "*/"
 
 -- |The consume trailing space combinator modifies a parser to consume any potential trailing whitespace
 cts :: Parser a -> Parser a
