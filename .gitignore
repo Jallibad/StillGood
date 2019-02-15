@@ -1,3 +1,10 @@
+# Haskell Stack ignore
 .stack-work/
 StillGood.cabal
 *~
+
+# Eclipse C++ ignore
+.cproject
+.project
+.settings
+Debug
