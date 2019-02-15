@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <stdio.h>
 #include <string>
+#include "../json/single_include/nlohmann/json.hpp"
+using json = nlohmann::json;
 
 /**
  * execute a system command, returning any data written to stdout in the process
@@ -35,5 +37,8 @@ int main(int argc, char* argv[]) {
 	//run the specified code file through Haskell to get an AST that we can work with
 	std::string ast = getCmdString("stack exec -- StillGood " + std::string(argv[1]));
 	std::cout << ast;
+	//parse the AST as JSON
+	json jast = json::parse(ast);
+	std::cout << jast.dump();
 	return 0;
 }
