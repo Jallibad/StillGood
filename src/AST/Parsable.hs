@@ -75,7 +75,7 @@ instance Parsable Expression where
 		where
 			term =
 				parens parser <|>
-				explicitType <|>
+				-- explicitType <|>
 				lambda <|>
 				builtIn <|>
 				variable
