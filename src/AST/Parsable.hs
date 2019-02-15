@@ -33,11 +33,11 @@ instance Parsable Identifier where
 instance Parsable Type where
 	parser = undefined
 
-typeDeclarator :: Parser ()
-typeDeclarator = void $ cts $ string "::"
+-- typeDeclarator :: Parser ()
+-- typeDeclarator = void $ cts $ string "::"
 
-explicitType :: Parser Expression
-explicitType = ExplicitType <$> parser <* typeDeclarator <*> parser
+-- explicitType :: Parser Expression
+-- explicitType = ExplicitType <$> parser <* typeDeclarator <*> parser
 
 -- |Modifies a parser to surround the contents with parentheses
 parens :: Parser a -> Parser a
