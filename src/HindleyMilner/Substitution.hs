@@ -2,7 +2,7 @@ module HindleyMilner.Substitution where
 
 import AST.Identifier
 import Control.Applicative (liftA2)
-import Control.Arrow ((>>>))
+import Control.Arrow-- ((>>>))
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -29,7 +29,7 @@ class Substitutable a where
 	occurs a = Set.member a . freeVars
 	-- |Uses the given lookup function to update each type variable.
 	-- The type variable `f` in the function signature is intended to hold errors, perhaps in Maybe or Either
-	changeVariables :: Monad f => (Identifier -> f Identifier) -> a -> f a
+	changeVariables :: Monad m => (Identifier -> m Identifier) -> a -> m a
 
 instance Substitutable Type where
 	-- A type constructor contains nothing substitutable (base case)
@@ -46,7 +46,7 @@ instance Substitutable Type where
 	-- A function application contains two subexpression with free variables
 	freeVars (t1 `Arrow` t2) = freeVars t1 `Set.union` freeVars t2
 
-	changeVariables :: Monad f => (Identifier -> f Identifier) -> Type -> f Type
+	changeVariables :: Monad m => (Identifier -> m Identifier) -> Type -> m Type
 	changeVariables f (a `Arrow` b) = liftA2 Arrow (changeVariables f a) (changeVariables f b)
 	changeVariables _ (Constructor a) = pure $ Constructor a
 	changeVariables f (Variable a) = Variable <$> f a
@@ -71,6 +71,10 @@ type TypeVarAssocList a = [(Identifier, a)]
 
 -- |Looks up a type variable in an associative list, returns a TypeError if not in the list
 lookupF :: Identifier -> TypeVarAssocList a -> Either TypeError a
-lookupF x = lookup x >>> \case
+lookupF = uncurry (.) . (flip maybe Right . Left . UnboundVariable &&& lookup)
+
+-- |Looks up a type variable in an associative list, returns a TypeError if not in the list
+lookupF' :: Identifier -> TypeVarAssocList a -> Either TypeError a
+lookupF' x = lookup x >>> \case
 	Nothing	-> Left $ UnboundVariable x
 	Just y	-> Right y

@@ -1,6 +1,7 @@
 module AST.Parsable
 	( Parsable
 	, Parser
+	, parseExpression
 	, parser
 	) where
 
@@ -54,10 +55,6 @@ lambdaDeclarator = void $ cts $ single '\\'
 lambdaBodySeparator :: Parser ()
 lambdaBodySeparator = label "lambda separator \"->\"" $ void $ cts $ chunk "->"
 
--- |Takes a list of variable names and an expression, then eta-expands a Lambda wrapper for each one
-combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
-combineArgsAndBody = liftA2 $ flip $ foldr' Lambda
-
 lambda :: Parser Expression
 lambda = combineArgsAndBody args body
 	where
@@ -66,16 +63,22 @@ lambda = combineArgsAndBody args body
 		
 		body :: Parser Expression
 		body = lambdaBodySeparator *> parser
+		
+		-- |Takes a list of variable names and an expression, then eta-expands a Lambda wrapper for each one
+		combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
+		combineArgsAndBody = liftA2 $ flip $ foldr' Lambda
 
 builtIn :: Parser Expression
 builtIn = BuiltIn <$> (some digitChar <|> chunk "+" <|> chunk "-")
 
 instance Parsable Expression where
 	parser = label "expression" $ foldl1 Application <$> some term
-		where
-			term =
-				parens parser <|>
-				-- explicitType <|>
-				lambda <|>
-				builtIn <|>
-				variable
+		where term =
+			parens parser <|>
+			-- explicitType <|>
+			lambda <|>
+			builtIn <|>
+			variable
+	
+parseExpression :: String -> Either (ParseErrorBundle String Void) Expression
+parseExpression = runParser parser ""

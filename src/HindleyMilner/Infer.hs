@@ -58,6 +58,4 @@ fresh = do
 -- f as = Map.fromList . zip as <$> mapM (const fresh) as
 
 instantiate :: Scheme -> Infer Type
-instantiate (Forall as t) = do
-	s <- Map.fromList . zip as <$> mapM (const fresh) as
-	pure $ apply s t
+instantiate (Forall as t) = flip apply t . Map.fromList . zip as <$> mapM (const fresh) as
