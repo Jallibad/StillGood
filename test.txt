@@ -1,1 +1,1 @@
-(\x -> x) y
+seq (print 1) (print 2)

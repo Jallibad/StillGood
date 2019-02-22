@@ -1,7 +1,7 @@
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <stdio.h>
+#include <fstream>
 #include <string>
 #include "../json/single_include/nlohmann/json.hpp"
 using json = nlohmann::json;
@@ -32,13 +32,22 @@ std::string getCmdString(std::string cmd) {
 int main(int argc, char* argv[]) {
 	//cmd args check
 	if (argc != 2) {
-		throw std::runtime_error("Incorrect number of args specified. Usage: StillGood.cpp inputCodeFile");
+		throw std::runtime_error("Incorrect number of args specified. Usage: StillGood.cpp inputCodeFile|inputJSONFile");
 	}
-	//run the specified code file through Haskell to get an AST that we can work with
-	std::string ast = getCmdString("stack exec -- StillGood " + std::string(argv[1]));
-	std::cout << ast;
+	std::string ast;
+	if (strcmp(argv[1]+strlen(argv[1])-2 , "sg") == 0) {
+		//run the specified code file through Haskell to get an AST that we can work with
+		ast = getCmdString("stack exec -- StillGood " + std::string(argv[1]));
+	}
+	else {
+		//read the pre-compiled JSON data from the specified JSON file
+		std::ifstream ifs(argv[1]);
+		std::string ast((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+	}
 	//parse the AST as JSON
 	json jast = json::parse(ast);
 	std::cout << jast.dump();
+	//convert the JSON to LLVM
+
 	return 0;
 }
