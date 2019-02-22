@@ -1,1 +1,1 @@
-print x; print y
+seq (print 1) (print 2)
