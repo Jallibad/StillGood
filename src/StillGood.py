@@ -12,7 +12,7 @@ def exitError(s):
 
 def main():
     if (len(sys.argv) != 2):
-        exitError("1 command line argument expected, {0} received. Usage: StillGood.cpp inputCodeFile|inputJSONFile")
+        exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile")
     #if we specified a StillGood file, run it through Haskell to get the AST. Otherwise, read the AST directly from the file
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
     jast = json.loads(ast)

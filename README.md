@@ -11,4 +11,5 @@ run "pip install llvmlite"
 Usage:  
 -Navigate to the project's root directory  
 -Run "stack build" to build the Haskell portion of the codebase  
--Run "python StillGood.py fileName" to have the specified code file converted to an AST and then compiled to LLVM
+-Run stack exec StillGood filename where 'filename' is your test program. Alternatively, you can run stack ghci to work with GHC's interactive environment.  
+-Run "python StillGood.py inputCodeFile|inputJSONFile" to compile the specified code file or pre-compiled AST JSON file to LLVM
