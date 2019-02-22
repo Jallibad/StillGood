@@ -6,6 +6,7 @@ module AST.Parsable
 	) where
 
 import AST.Identifier
+import AST.Precedence
 import AST.Types
 import Control.Applicative (liftA2)
 import Control.Monad (void)
@@ -69,16 +70,23 @@ lambda = combineArgsAndBody args body
 		combineArgsAndBody = liftA2 $ flip $ foldr' Lambda
 
 builtIn :: Parser Expression
-builtIn = BuiltIn <$> (some digitChar <|> chunk "+" <|> chunk "-")
+builtIn = BuiltIn <$> cts (
+			some digitChar <|>
+			chunk "+" <|>
+			chunk "-" <|>
+			chunk "*" <|>
+			chunk "^" <|>
+			chunk ";" )
+
+term :: Parser Expression
+term =	parens parser <|>
+		-- explicitType <|>
+		lambda <|>
+		builtIn <|>
+		variable
 
 instance Parsable Expression where
-	parser = label "expression" $ foldl1 Application <$> some term
-		where term =
-			parens parser <|>
-			-- explicitType <|>
-			lambda <|>
-			builtIn <|>
-			variable
+	parser = label "expression" $ apply <$> some term
 	
 parseExpression :: String -> Either (ParseErrorBundle String Void) Expression
 parseExpression = runParser parser ""
