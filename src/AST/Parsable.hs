@@ -15,7 +15,6 @@ import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer as L
--- import Types
 
 type Parser = Parsec Void String
 
