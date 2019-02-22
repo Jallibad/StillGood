@@ -1,17 +1,20 @@
-module Parsable
+module AST.Parsable
 	( Parsable
 	, Parser
 	, parser
 	) where
 
+import AST.Identifier
+import AST.Types
 import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Foldable (foldr')
 import Data.Void (Void)
+import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer as L
-import Types
+-- import Types
 
 type Parser = Parsec Void String
 
@@ -31,6 +34,15 @@ class Parsable a where
 instance Parsable Identifier where
 	parser = label "identifier" $ cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
 
+instance Parsable Type where
+	parser = undefined
+
+-- typeDeclarator :: Parser ()
+-- typeDeclarator = void $ cts $ string "::"
+
+-- explicitType :: Parser Expression
+-- explicitType = ExplicitType <$> parser <* typeDeclarator <*> parser
+
 -- |Modifies a parser to surround the contents with parentheses
 parens :: Parser a -> Parser a
 parens = between (cts $ single '(') (cts $ single ')')
@@ -46,15 +58,16 @@ lambdaDeclarator = void $ cts $ single '\\'
 lambdaBodySeparator :: Parser ()
 lambdaBodySeparator = label "lambda separator \"->\"" $ void $ cts $ chunk "->"
 
+-- |Takes a list of variable names and an expression, then eta-expands a Lambda wrapper for each one
+combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
+combineArgsAndBody = liftA2 $ flip $ foldr' Lambda
+
 lambda :: Parser Expression
 lambda = combineArgsAndBody args body
 	where
-		combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
-		combineArgsAndBody = liftA2 (flip $ foldr' Lambda)
-		
 		args :: Parser [Identifier]
 		args = lambdaDeclarator *> some parser
-
+		
 		body :: Parser Expression
 		body = lambdaBodySeparator *> parser
 
@@ -66,6 +79,7 @@ instance Parsable Expression where
 		where
 			term =
 				parens parser <|>
+				-- explicitType <|>
 				lambda <|>
 				builtIn <|>
 				variable

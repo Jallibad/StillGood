@@ -1,51 +1,63 @@
-module HindleyMilner.Infer where
+module HindleyMilner.Infer
+	( Infer
+	, fresh
+	, instantiate
+	, runInfer
+	) where
 
-import Control.Applicative (liftA2)
+import AST.Identifier
+import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.State
-import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import HindleyMilner.Substitution
+import HindleyMilner.Scheme
 import HindleyMilner.Type
-import Types hiding (Variable)
 
 newtype Unique = Unique {count :: Int}
 
 type Infer a = ExceptT TypeError (State Unique) a
 
+type TypeVarLookupFunction = Identifier -> Either TypeError Identifier
+
 initUnique :: Unique
 initUnique = Unique 0
 
-letters :: [String]
-letters = [1..] >>= flip replicateM ['a'..'z']
+freshVars :: [Identifier]
+freshVars = Identifier <$> ([1..] >>= flip replicateM ['a'..'z'])
 
 runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
-runInfer m = case evalState (runExceptT m) initUnique of
+runInfer m = join $ case flip evalState initUnique $ runExceptT m of
 	Left err -> Left err
 	Right res -> Right $ closeOver res
 
-closeOver :: (Map Identifier Type, Type) -> Scheme
+closeOver :: (Subst, Type) -> Either TypeError Scheme
 closeOver = normalize . generalize empty . uncurry apply
 
--- |Add a `forall` to the type, binding the variables that we don't currently have substitutions for
-generalize :: Environment -> Type -> Scheme
-generalize env t = Forall as t
-	where as = Set.toList $ freeVars t `Set.difference` freeVars env
+makeAssocList :: Substitutable a => a -> TypeVarAssocList Identifier
+makeAssocList = flip zip freshVars . Set.toList . freeVars
 
-ord :: Type -> [(Identifier, Identifier)]
-ord body = zip (Set.toList $ freeVars body) (fmap Identifier letters)
+-- makeMap :: Substitutable a => a -> Map Identifier Identifier
+-- makeMap = Map.fromList . makeAssocList
 
--- |Uses the given lookup function to replace each type variable with a corresponding one.
--- Intended to be specialized to Maybe
-replaceVariables :: Applicative f => (Identifier -> f Identifier) -> Type -> f Type
-replaceVariables f (a `Arrow` b) = liftA2 Arrow (replaceVariables f a) (replaceVariables f b)
-replaceVariables _ (Constructor a) = pure $ Constructor a
-replaceVariables f (Variable a) = Variable <$> f a
+boundVarsAndLookup :: Substitutable a => a -> ([Identifier], TypeVarLookupFunction)
+boundVarsAndLookup = (fmap snd &&& flip lookupF) . makeAssocList
 
 -- |Reset the bound type variables (maybe we've bound ['a','d','z']) to our list of fresh variables ['a','b','c']
 -- example: @normalize (Forall [Identifier "b"] $ Variable $ Identifier "b")@
-normalize :: Scheme -> Scheme
-normalize (Forall _ body) = Forall (snd <$> subst) replacement
-	where
-		subst = ord body
-		Just replacement = replaceVariables (`lookup` subst) body
+normalize :: Scheme -> Either TypeError Scheme
+normalize (Forall _ body) = reconstructScheme body $ boundVarsAndLookup body
+
+fresh :: Infer Type
+fresh = do
+	s <- get
+	put s{count = count s + 1}
+	pure $ HindleyMilner.Type.Variable $ freshVars !! count s
+
+-- f as = Map.fromList . zip as <$> mapM (const fresh) as
+
+instantiate :: Scheme -> Infer Type
+instantiate (Forall as t) = do
+	s <- Map.fromList . zip as <$> mapM (const fresh) as
+	pure $ apply s t
