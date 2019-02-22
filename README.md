@@ -1,14 +1,14 @@
 # StillGood  
   
+Requirements:  
+-Python 3.6+ (https://www.python.org/downloads/)  
+-Haskell (https://docs.haskellstack.org/en/stable/README/)  
+  
 Install Instructions:  
--To install Haskell, see https://docs.haskellstack.org/en/stable/README/  
--To install C++ through Cygwin, see https://cygwin.com/install.html  
--To install LLVM, install one of the pre-built binaries or build from source http://releases.llvm.org/download.html or just use a snapshot build http://llvm.org/builds/
--Finally, to setup the project, run "git clone --recurse-submodules git://github.com/Jallibad/StillGood.git"  
+run "pip install llvmlite"  
+-run "git clone git://github.com/Jallibad/StillGood.git"  
   
 Usage:  
 -Navigate to the project's root directory  
--Ensure that you have checked out and updated all submodules by running "git submodule update --recursive --remote"  
 -Run "stack build" to build the Haskell portion of the codebase  
--Run "gcc -o StillGood.out StillGood.cpp" to build the C++ portion of the codebase  
--Run "./StillGood.out codeFileName" to have the specified code file converted to an AST and then compiled to LLVM
+-Run "python StillGood.py fileName" to have the specified code file converted to an AST and then compiled to LLVM
