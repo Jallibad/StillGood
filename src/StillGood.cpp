@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include "../json/single_include/nlohmann/json.hpp"
 using json = nlohmann::json;
 
@@ -35,18 +36,19 @@ int main(int argc, char* argv[]) {
 		throw std::runtime_error("Incorrect number of args specified. Usage: StillGood.cpp inputCodeFile|inputJSONFile");
 	}
 	std::string ast;
-	if (strcmp(argv[1]+strlen(argv[1])-2 , "sg") == 0) {
+	if (strcmp(argv[1]+std::max(0,(int)strlen(argv[1])-3), ".sg") == 0) {
 		//run the specified code file through Haskell to get an AST that we can work with
 		ast = getCmdString("stack exec -- StillGood " + std::string(argv[1]));
 	}
 	else {
 		//read the pre-compiled JSON data from the specified JSON file
 		std::ifstream ifs(argv[1]);
-		std::string ast((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+		ast = std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 	}
+	std::cout << "ast: " << ast << std::endl;
 	//parse the AST as JSON
 	json jast = json::parse(ast);
-	std::cout << jast.dump();
+	std::cout << "json: " << jast.dump() << std::endl;
 	//convert the JSON to LLVM
 
 	return 0;

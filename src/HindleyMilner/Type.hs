@@ -21,6 +21,11 @@ instance ToJSON Type where
 	toEncoding = genericToEncoding defaultOptions
 instance FromJSON Type
 
+numArgs :: Integral a => Type -> a
+numArgs (Variable _) = 0
+numArgs (Constructor _) = 0
+numArgs (Arrow _ a) = numArgs a + 1
+
 data Scheme = Forall [Identifier] Type deriving (Show)
 
 type Environment = Map Identifier Scheme

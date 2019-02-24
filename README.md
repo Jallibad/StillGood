@@ -26,6 +26,7 @@ Install Instructions:
 Usage:  
 -Navigate to the project's root directory  
 -Ensure that you have checked out and updated all submodules by running "git submodule update --recursive --remote"  
+<<<<<<< HEAD
 -Run "stack build" to build the Haskell portion of the codebase
 -Run `stack exec StillGood filename` where 'filename' is your test program. Alternatively you can run `stack ghci` to work with GHC's interactive environment
 -Run "gcc -o StillGood.out StillGood.cpp" to build the C++ portion of the codebase  
