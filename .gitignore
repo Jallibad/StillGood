@@ -8,3 +8,5 @@ StillGood.cabal
 .project
 .settings
 Debug
+tmp
+.pydevproject
