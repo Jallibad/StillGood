@@ -6,7 +6,7 @@ import AST.Types
 import Control.Monad (MonadPlus)
 import Data.Foldable
 import Data.Sequence
-import HindleyMilner.Type (Type(Variable,Arrow), numArgs)
+import HindleyMilner.Type (Type(Arrow), numArgs)
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
 
@@ -67,10 +67,9 @@ rpn2 stack (rpnExpr : rpnExprList) = case rpnExpr of
 	-- ExplicitType (HindleyMilner.Type.Variable x) v@(BuiltIn _) -> -- should be BuiltIn Variable type 
 	-- 			rpn2 (rpnExpr : stack) rpnExprList -- add to stack
 	ExplicitType (Arrow a b) op@(BuiltIn _)	->
-				-- rpn2 ((apply (op : args )) : remainder) rpnExprList -- should be ...
 				rpn2 ((rpn_apply op args) : remainder) rpnExprList
 					where (args, remainder) = (Prelude.take (numArgs (Arrow a b)) stack, Prelude.drop (numArgs (Arrow a b)) stack)  -- BuiltIn operator
-	c@(BuiltIn _) -> rpn2 (rpnExpr : stack) rpnExprList
+	BuiltIn _ -> rpn2 (rpnExpr : stack) rpnExprList -- what about constants like 3
 	_ -> undefined -- error
 rpn2 stack [] = case (Data.Foldable.length stack) of
 	0 -> undefined -- error
