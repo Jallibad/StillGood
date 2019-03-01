@@ -35,8 +35,9 @@ class Substitutable a where
 class Recursive a => Substitutable' a where
 	freeVars' :: Base t (Set Identifier) -> Set Identifier
 
-thing :: Recursive t => Base t (Set Identifier) -> Set Identifier
-thing = undefined
+instance Substitutable' Type where
+	freeVars' = undefined
+	-- freeVars' (VariableF i) = 
 
 instance Substitutable Type where
 	-- A type constructor contains nothing substitutable (base case)

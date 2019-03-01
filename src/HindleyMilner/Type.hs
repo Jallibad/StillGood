@@ -1,7 +1,7 @@
 module HindleyMilner.Type where
 
 import AST.Identifier
-import Control.Arrow
+-- import Control.Arrow
 import Data.Aeson
 import Data.Functor.Foldable
 import Data.Map.Strict (Map)
