@@ -15,12 +15,15 @@ import Data.Void (Void)
 import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
 
--- |The space consumer combinator consumes at least one character of whitespace, or a comment (TODO)
+-- |The space consumer combinator consumes at least one character of whitespace, or a comment
 sc :: Parser ()
-sc = space1
+sc = L.space space1 lineCmnt blockCmnt where
+	lineCmnt = L.skipLineComment "--"
+  	blockCmnt = L.skipBlockComment "/*" "*/"
 
 -- |The consume trailing space combinator modifies a parser to consume any potential trailing whitespace
 cts :: Parser a -> Parser a
