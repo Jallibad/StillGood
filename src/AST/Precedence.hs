@@ -6,7 +6,7 @@ import AST.Types
 import Control.Monad (MonadPlus)
 import Data.Foldable
 import Data.Sequence
-import HindleyMilner.Type (numArgs)
+import HindleyMilner.Type (Type(Arrow), numArgs)
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
 
