@@ -6,7 +6,7 @@ import AST.Types
 import Control.Monad (MonadPlus)
 import Data.Foldable
 import Data.Sequence
-import HindleyMilner.Type (Type(Arrow), numArgs)
+import HindleyMilner.Type (Type(Variable,Arrow), numArgs)
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
 
@@ -14,10 +14,21 @@ data Associativity = L | R deriving (Show)
 data Precedence = Prefix | Infix {level :: Int, assoc :: Associativity} deriving (Show)
 
 -- the rpn rule folds list based on foldingfunction and takes head...
+-- rpn :: ApplicationRule
+-- rpn = head . foldl foldingFunction []
+-- 	where
+-- 		foldingFunction xs (ExplicitType (numArgs -> a) f@(BuiltIn _)) = apply (f : Prelude.take a xs) : Prelude.drop a xs
+-- 		foldingFunction _ _ = undefined
+
+-- apply foldingFunction to list of expressions using foldl starting with empty list
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
-		foldingFunction xs (ExplicitType (numArgs -> a) f@(BuiltIn _)) = apply (f : Prelude.take a xs) : Prelude.drop a xs
+		foldingFunction xs (ExplicitType t@(Arrow (Arrow _ _) _) f@(BuiltIn _)) = -- builtIn needs to be Infix?
+			let argNum = (numArgs t) in
+				-- (apply (f : Prelude.take argNum xs)) : Prelude.drop argNum xs -- is the issue with apply?
+				(rpn_apply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs)
+		foldingFunction xs (ExplicitType (HindleyMilner.Type.Variable a) v@(BuiltIn _)) = (ExplicitType (HindleyMilner.Type.Variable a) v) : xs-- treat number as function?
 		foldingFunction _ _ = undefined
 
 -- applies Application to two expressions?
@@ -45,6 +56,7 @@ popToQueue stack queue = queue >< fromList (Prelude.reverse $ map fst stack)
 shuntingYardAlgorithm :: [Expression] -> Seq Expression
 shuntingYardAlgorithm = sya [] empty . map (\x -> (x, precedence x))
 
+-- shunting yard algorithm -- moves infix operator to end
 sya :: [(Expression, Int)] -> Seq Expression -> [(Expression, Precedence)] -> Seq Expression
 sya stack queue ((expression, prec) : tokenList) = case prec of
 	Prefix		-> sya stack (queue |> expression) tokenList
@@ -77,6 +89,10 @@ rpn2 stack [] = case (Data.Foldable.length stack) of
 
 -- rpn2 [] [(ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "3")), (ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "4")), (ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "+"))]
 
-
+-- questions:
+-- by the time rpn is called, should it have all of this type information? like has it already gone through hindley milner type inference?
+-- 		how are we supposed to pattern match with (BuiltIn "3")
+-- why are numbers like "3" and "4" builtins? should these be interpreted as a function with only one arg?
+-- having (numArgs -> a) wasn't working
 
 

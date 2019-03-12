@@ -26,8 +26,7 @@ run "pip install llvmlite"
 -run "git clone git://github.com/Jallibad/StillGood.git"  
   
 Usage:  
--Navigate to the project's root directory  
-<<<<<<< HEAD
+-Navigate to the project's root directory
 -Ensure that you have checked out and updated all submodules by running "git submodule update --recursive --remote"  
 -Run "stack build" to build the Haskell portion of the codebase  
 -Run stack exec StillGood filename where 'filename' is your test program. Alternatively, you can run stack ghci to work with GHC's interactive environment.  

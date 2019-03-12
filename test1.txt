@@ -1,19 +1,4 @@
-(\x -> x) y
+(\x -> x) x  + y
 {- multiline
 comment -}
 -- (\x -> x) z
-
--- notes
--- where should operators go? will it be of for e1 op e2?
--- how are code blocks and indentation going to work?
--- where should the literal types that will be inferred go?
--- are there classes?
--- ops = Map.fromList [
--- 	(Add, int, int, int),
---	(Subtract, int, int, int),
---	(Multiply, int, int, int),
---	(Divide, int, int, int), -- floor?
---	(Eql, int, int, bool),
---	(Union,),
---	(Intersection,)
---]
