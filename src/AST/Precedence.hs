@@ -83,11 +83,12 @@ rpnApply op exprs =
 -- this needs to apply to various kinds of types, where an operator can be treated as an operand
 rpn2 :: [Expression] -> [Expression] -> Expression
 rpn2 stack (rpnExpr : rpnExprList) = case rpnExpr of
-	-- ExplicitType (HindleyMilner.Type.Variable x) v@(BuiltIn _) -> -- should be BuiltIn Variable type 
-	-- 	rpn2 (rpnExpr : stack) rpnExprList -- add to stack
-	ExplicitType (Arrow a b) op@(BuiltIn _)	-> rpn2 (rpnApply op args : remainder) rpnExprList
-		where (args, remainder) = (Prelude.take (numArgs (Arrow a b)) stack, Prelude.drop (numArgs (Arrow a b)) stack)  -- BuiltIn operator
-	BuiltIn _ -> rpn2 (rpnExpr : stack) rpnExprList
+	ExplicitType t op@(BuiltIn _)	->
+		if (numArgs t) > 0 then
+			rpn2 (rpnApply op args : remainder) rpnExprList
+		else -- variable, constant, etc.
+			rpn2 (rpnExpr : stack) rpnExprList
+		where (args, remainder) = (Prelude.take (numArgs t) stack, Prelude.drop (numArgs t) stack)
 	_ -> undefined -- error
 rpn2 stack [] = case Data.Foldable.length stack of
 	0 -> undefined -- error
