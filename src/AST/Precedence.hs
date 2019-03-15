@@ -8,7 +8,7 @@ import Control.Monad (MonadPlus)
 import Data.Foldable
 import Data.Function
 import Data.Sequence
-import HindleyMilner.Type (Type(Arrow), numArgs)
+import HindleyMilner.Type (numArgs)
 import Data.Tuple
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
@@ -22,10 +22,20 @@ instance Ord Precedence where
 	compare _		Prefix	= GT
 	compare (Infix n1 _) (Infix n2 _) = compare n1 n2
 
+rpnApply :: Expression -> [Expression] -> Expression
+rpnApply op exprs =
+	case Data.Foldable.length exprs of
+		0 -> undefined -- error
+		1 -> Application op $ head exprs -- one arg left
+		_ -> Application (rpnApply op $ tail exprs) $ head exprs
+
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
-		foldingFunction xs (ExplicitType (numArgs -> a) f@(BuiltIn _)) = apply (f : Prelude.take a xs) : Prelude.drop a xs
+		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =
+			let argNum = (numArgs t) in
+				if argNum > 0 then (rpnApply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs)
+				else f : xs
 		foldingFunction _ _ = undefined
 
 apply :: ApplicationRule
@@ -70,29 +80,6 @@ sya stack queue ((expression, prec) : tokenList) = case prec of
 	Infix n _a	-> sya ((expression, n) : remainder) (popToQueue parentOperators queue) tokenList
 		where (parentOperators, remainder) = break ((>n) . snd) stack
 sya stack queue [] = popToQueue stack queue
-
-
--- pretty sure this is all wrong, I need to work on this [TODO]
-rpnApply :: Expression -> [Expression] -> Expression
-rpnApply op exprs =
-	case Data.Foldable.length exprs of
-		0 -> undefined -- error
-		1 -> Application op $ head exprs -- one arg left
-		_ -> Application (rpnApply op $ tail exprs) $ head exprs
-
--- this needs to apply to various kinds of types, where an operator can be treated as an operand
-rpn2 :: [Expression] -> [Expression] -> Expression
-rpn2 stack (rpnExpr : rpnExprList) = case rpnExpr of
-	ExplicitType t op@(BuiltIn _)	->
-		if (numArgs t) > 0 then
-			rpn2 (rpnApply op args : remainder) rpnExprList
-		else -- variable, constant, etc.
-			rpn2 (rpnExpr : stack) rpnExprList
-		where (args, remainder) = (Prelude.take (numArgs t) stack, Prelude.drop (numArgs t) stack)
-	_ -> undefined -- error
-rpn2 stack [] = case Data.Foldable.length stack of
-	0 -> undefined -- error
-	_ -> head stack -- there should only be one item in stack
 
 takeExpression :: (Stack, Stack) -> Maybe (((Stack, Stack), Line), Expression)
 takeExpression (_, []) = Nothing
