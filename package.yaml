@@ -32,6 +32,7 @@ dependencies:
 - bytestring
 - containers
 - mtl
+- recursion-schemes
 
 default-extensions:
 - TupleSections

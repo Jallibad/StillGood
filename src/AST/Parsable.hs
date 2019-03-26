@@ -104,7 +104,4 @@ parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Exp
 parseExpression src e =
 	let ret1 = runParser parser src e in case ret1 of
 		Left _ -> ret1
-		Right _ -> ret1
-			-- let ret2 = (parseTypes res) in case ret2 of
-			-- 	Left _ -> undefined -- ideally ret2...
-			-- 	Right _ -> ret1
+		Right _ -> ret1 -- should run type inference here (using parseTypes, when finished)

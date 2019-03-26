@@ -21,7 +21,6 @@ instance Ord Precedence where
 	compare _		Prefix	= GT
 	compare (Infix n1 _) (Infix n2 _) = compare n1 n2
 
--- pretty sure this is all wrong, I need to work on this [TODO]
 rpnApply :: Expression -> [Expression] -> Expression
 rpnApply op exprs =
 	case Data.Foldable.length exprs of
@@ -35,8 +34,8 @@ rpn = head . foldl foldingFunction []
 	where
 		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =
 			let argNum = (numArgs t) in
-				if argNum > 0 then (rpnApply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs) -- operator
-				else f : xs -- operand
+				if argNum > 0 then (rpnApply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs)
+				else f : xs
 		foldingFunction _ _ = undefined
 
 -- applies Application to two expressions?

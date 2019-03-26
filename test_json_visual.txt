@@ -1,15 +1,24 @@
 seq (print 1) (print 2)
 
-{"tag":"Application","function":
-	{"tag":"Application","function":
-		{"tag":"Variable","identifier":"seq"},
-		"body":{"tag":"Application","function":
-			{"tag":"Variable","identifier":"print"},
-			"body":{"tag":"BuiltIn","contents":"1"}
-		}
-	},
-	"body":{"tag":"Application","function":
-		{"tag":"Variable","identifier":"print"},
-		"body":{"tag":"BuiltIn","contents":"2"}
-	}
+{   "tag":"Application","function": {
+        "tag":"Application","function": {
+            "tag":"Variable","identifier":"seq"
+        },
+        "body":{
+            "tag":"Application","function":{
+                "tag":"Variable","identifier":"print"
+            },
+            "body":{
+                "tag":"BuiltIn","contents":"1"
+            }
+        }
+    },
+    "body":{
+        "tag":"Application","function":{
+            "tag":"Variable","identifier":"print"
+        },
+        "body":{
+            "tag":"BuiltIn","contents":"2"
+        }
+    }
 }
