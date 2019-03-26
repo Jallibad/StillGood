@@ -3,6 +3,7 @@ module HindleyMilner.Substitution where
 import AST.Identifier
 import Control.Applicative (liftA2)
 import Control.Arrow-- ((>>>))
+import Data.Functor.Foldable
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -31,6 +32,13 @@ class Substitutable a where
 	-- The type variable `f` in the function signature is intended to hold errors, perhaps in Maybe or Either
 	changeVariables :: Monad m => (Identifier -> m Identifier) -> a -> m a
 
+class Recursive a => Substitutable' a where
+	freeVars' :: Base t (Set Identifier) -> Set Identifier
+
+instance Substitutable' Type where
+	freeVars' = undefined
+	-- freeVars' (VariableF i) = 
+
 instance Substitutable Type where
 	-- A type constructor contains nothing substitutable (base case)
 	apply _ (Constructor a) = Constructor a
@@ -39,6 +47,7 @@ instance Substitutable Type where
 	-- In function application the function and argument should both be substituted recursively
 	apply s (t1 `Arrow` t2) = apply s t1 `Arrow` apply s t2
 
+	-- freeVars = cata thing
 	-- A type constructor contains no free variables
 	freeVars (Constructor _) = Set.empty
 	-- A type variable is by itself a single free variable

@@ -27,6 +27,7 @@ bind a t
 
 infer :: Environment -> Expression -> Infer (Subst, Type)
 infer env = \case
+	BuiltIn _ -> pure ([], typeInt) -- for now, BuiltIn could be other types though
 	AST.Types.Variable x -> lookupEnv env x
 	Lambda argument body -> do
 		tv <- fresh

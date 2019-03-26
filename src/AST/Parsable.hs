@@ -2,24 +2,27 @@ module AST.Parsable
 	( Parsable
 	, Parser
 	, parseExpression
+	, parseTypes
 	, parser
 	) where
 
 import AST.Identifier
 import AST.Precedence
 import AST.Types
+import HindleyMilner.Type (Type, TypeError, Scheme, empty)
+import HindleyMilner.Infer (runInfer)
+import HindleyMilner (infer) -- file, not in same package
 import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Foldable (foldr')
 import Data.Void (Void)
-import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
 
--- |The space consumer combinator consumes at least one character of whitespace, or a comment (TODO)
+-- |The space consumer combinator consumes at least one character of whitespace, or a comment
 sc :: Parser ()
 sc = L.space space1 lineCmnt blockCmnt where
 	lineCmnt = L.skipLineComment "--"
@@ -36,7 +39,7 @@ instance Parsable Identifier where
 	parser = label "identifier" $ cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
 
 instance Parsable Type where
-	parser = undefined
+	parser = undefined -- label "type" $ cts $
 
 -- typeDeclarator :: Parser ()
 -- typeDeclarator = void $ cts $ string "::"
@@ -90,6 +93,18 @@ term =	parens parser <|>
 
 instance Parsable Expression where
 	parser = label "expression" $ apply <$> some term
-	
-parseExpression :: String -> Either (ParseErrorBundle String Void) Expression
-parseExpression = runParser parser ""
+
+
+parseTypes :: Expression -> Either TypeError Scheme -- should return expressions with type built in
+parseTypes e =
+	let env = HindleyMilner.Type.empty in (runInfer (infer env e)) -- does the issue have to do with left and right?
+
+-- I think what I need to do is here
+parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
+parseExpression src e =
+	let ret1 = runParser parser src e in case ret1 of
+		Left _ -> ret1
+		Right _ -> ret1
+			-- let ret2 = (parseTypes res) in case ret2 of
+			-- 	Left _ -> undefined -- ideally ret2...
+			-- 	Right _ -> ret1

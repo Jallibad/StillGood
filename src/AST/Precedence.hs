@@ -1,34 +1,42 @@
 module AST.Precedence where
 
--- import AST.Identifier
+import AST.ShuntingYard hiding (popToQueue)
 import AST.Types
--- import Control.Arrow
+import Control.Arrow
 import Control.Monad (MonadPlus)
 import Data.Foldable
+import Data.Function
 import Data.Sequence
-import HindleyMilner.Type (Type(Variable,Arrow), numArgs)
+import HindleyMilner.Type (numArgs)
+import Data.Tuple
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
 
-data Associativity = L | R deriving (Show)
-data Precedence = Prefix | Infix {level :: Int, assoc :: Associativity} deriving (Show)
+data Associativity = L | R deriving (Eq, Show)
+data Precedence = Prefix | Infix {level :: Int, assoc :: Associativity} deriving (Eq, Show)
 
--- the rpn rule folds list based on foldingfunction and takes head...
--- rpn :: ApplicationRule
--- rpn = head . foldl foldingFunction []
--- 	where
--- 		foldingFunction xs (ExplicitType (numArgs -> a) f@(BuiltIn _)) = apply (f : Prelude.take a xs) : Prelude.drop a xs
--- 		foldingFunction _ _ = undefined
+instance Ord Precedence where
+	compare Prefix	Prefix	= EQ
+	compare Prefix	_		= LT
+	compare _		Prefix	= GT
+	compare (Infix n1 _) (Infix n2 _) = compare n1 n2
+
+-- pretty sure this is all wrong, I need to work on this [TODO]
+rpnApply :: Expression -> [Expression] -> Expression
+rpnApply op exprs =
+	case Data.Foldable.length exprs of
+		0 -> undefined -- error
+		1 -> Application op $ head exprs -- one arg left
+		_ -> Application (rpnApply op $ tail exprs) $ head exprs
 
 -- apply foldingFunction to list of expressions using foldl starting with empty list
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
-		foldingFunction xs (ExplicitType t@(Arrow (Arrow _ _) _) f@(BuiltIn _)) = -- builtIn needs to be Infix?
+		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =
 			let argNum = (numArgs t) in
-				-- (apply (f : Prelude.take argNum xs)) : Prelude.drop argNum xs -- is the issue with apply?
-				(rpn_apply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs)
-		foldingFunction xs (ExplicitType (HindleyMilner.Type.Variable a) v@(BuiltIn _)) = (ExplicitType (HindleyMilner.Type.Variable a) v) : xs-- treat number as function?
+				if argNum > 0 then (rpnApply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs) -- operator
+				else f : xs -- operand
 		foldingFunction _ _ = undefined
 
 -- applies Application to two expressions?
@@ -36,7 +44,7 @@ apply :: ApplicationRule
 apply = foldl1 Application
 
 applyWithPrecedence :: ApplicationRule
-applyWithPrecedence = rpn . shuntingYardAlgorithm . toList
+applyWithPrecedence = rpn . shuntingYardAlgorithm handleInput . toList
 
 precedence :: Expression -> Precedence
 precedence (BuiltIn x) = case x of
@@ -50,13 +58,24 @@ precedence (BuiltIn x) = case x of
 precedence (ExplicitType _ x) = precedence x
 precedence _ = Prefix
 
+isPrefix :: Expression -> Bool
+isPrefix (precedence -> Prefix) = True
+isPrefix _ = False
+
+-- takePrefix :: Stack -> (Expression, Stack)
+-- takePrefix 
+
+handleInput :: OperatorHandler
+handleInput input op = case precedence op of
+	Prefix -> second (|> op) input
+	prec@(Infix _ _) -> swap $ uncurry (&) $ thing input
+		where
+			thing :: ShuntingYard -> ((Stack, Stack), (Stack, Stack) -> (Line, Stack))
+			thing = break ((>= prec) . precedence) *** replaceOperators op
+
 popToQueue :: [(Expression, b)] -> Seq Expression -> Seq Expression
 popToQueue stack queue = queue >< fromList (Prelude.reverse $ map fst stack)
 
-shuntingYardAlgorithm :: [Expression] -> Seq Expression
-shuntingYardAlgorithm = sya [] empty . map (\x -> (x, precedence x))
-
--- shunting yard algorithm -- moves infix operator to end
 sya :: [(Expression, Int)] -> Seq Expression -> [(Expression, Precedence)] -> Seq Expression
 sya stack queue ((expression, prec) : tokenList) = case prec of
 	Prefix		-> sya stack (queue |> expression) tokenList
@@ -64,35 +83,6 @@ sya stack queue ((expression, prec) : tokenList) = case prec of
 		where (parentOperators, remainder) = break ((>n) . snd) stack
 sya stack queue [] = popToQueue stack queue
 
--- given 3, 4, + as op=+, args=4,3 -> (Application (Application + 3) 4)
--- given 5, 2, 4, max as op=max, args = 4,2,5 -> (Application (Application (Application max 5) 2) 4)
--- how do I know op is infix? how can I use foldl?
-rpn_apply :: Expression -> [Expression] -> Expression
-rpn_apply op exprs =
-	case (Data.Foldable.length exprs) of
-		0 -> undefined -- error
-		1 -> (Application op (head exprs)) -- one arg left
-		_ -> (Application (rpn_apply op (tail exprs)) (head exprs))
-
-rpn2 :: [Expression] -> [Expression] -> Expression
-rpn2 stack (rpnExpr : rpnExprList) = case rpnExpr of
-	-- ExplicitType (HindleyMilner.Type.Variable x) v@(BuiltIn _) -> -- should be BuiltIn Variable type 
-	-- 			rpn2 (rpnExpr : stack) rpnExprList -- add to stack
-	ExplicitType (Arrow a b) op@(BuiltIn _)	->
-				rpn2 ((rpn_apply op args) : remainder) rpnExprList
-					where (args, remainder) = (Prelude.take (numArgs (Arrow a b)) stack, Prelude.drop (numArgs (Arrow a b)) stack)  -- BuiltIn operator
-	BuiltIn _ -> rpn2 (rpnExpr : stack) rpnExprList -- what about constants like 3
-	_ -> undefined -- error
-rpn2 stack [] = case (Data.Foldable.length stack) of
-	0 -> undefined -- error
-	_ -> head stack -- there should only be one item in stack
-
--- rpn2 [] [(ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "3")), (ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "4")), (ExplicitType (Arrow (HindleyMilner.Type.Variable "a") (HindleyMilner.Type.Variable "b")) (BuiltIn "+"))]
-
--- questions:
--- by the time rpn is called, should it have all of this type information? like has it already gone through hindley milner type inference?
--- 		how are we supposed to pattern match with (BuiltIn "3")
--- why are numbers like "3" and "4" builtins? should these be interpreted as a function with only one arg?
--- having (numArgs -> a) wasn't working
-
-
+takeExpression :: (Stack, Stack) -> Maybe (((Stack, Stack), Line), Expression)
+takeExpression (_, []) = Nothing
+takeExpression (_stack, _input) = undefined
