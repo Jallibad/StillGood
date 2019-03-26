@@ -94,12 +94,12 @@ term =	parens parser <|>
 instance Parsable Expression where
 	parser = label "expression" $ apply <$> some term
 
-
+-- I need to return something other than the scheme - use state from 'infer' to get explicit types, return expression
 parseTypes :: Expression -> Either TypeError Scheme -- should return expressions with type built in
 parseTypes e =
 	let env = HindleyMilner.Type.empty in (runInfer (infer env e)) -- does the issue have to do with left and right?
 
--- I think what I need to do is here
+-- Given expression as a string, parse and infer types
 parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
 parseExpression src e =
 	let ret1 = runParser parser src e in case ret1 of
