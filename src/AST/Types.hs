@@ -2,6 +2,7 @@ module AST.Types where
 
 import AST.Identifier
 import Data.Aeson
+import Data.Functor.Foldable
 import GHC.Generics (Generic)
 import HindleyMilner.Type (Type)
 
@@ -22,7 +23,10 @@ data ExpressionF a = VariableF {identifier :: Identifier}
 				| BuiltInF String
 				deriving (Generic, Show, Functor)
 
-newtype Term f = In {out :: f (Term f)}
--- instance ToJSON ExpressionF a where
--- 	toEncoding = genericToEncoding defaultOptions
--- instance FromJSON Expression
+type instance Base Expression = ExpressionF
+instance Recursive Expression where
+	project (Variable i) = VariableF i
+	project (Lambda a b) = LambdaF a b
+	project (Application f b) = ApplicationF f b
+	project (ExplicitType a e) = ExplicitTypeF a e
+	project (BuiltIn x) = BuiltInF x

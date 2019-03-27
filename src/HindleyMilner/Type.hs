@@ -11,6 +11,7 @@ import GHC.Generics (Generic)
 data TypeError
 	= UnificationFail Type Type
 	| InfiniteType Identifier Type
+	| TooManyArguments -- TODO Add context details
 	| UnboundVariable Identifier
 	deriving (Show)
 
@@ -29,14 +30,18 @@ data TypeF a
 	| ArrowF a a
 	deriving (Generic, Show, Eq, Ord, Functor)
 
-newtype Term f = In {out :: f (Term f)}
-
 type instance Base Type = TypeF
+
 instance Recursive Type where
 	project (Variable i) = VariableF i
 	project (Constructor i) = ConstructorF i
 	project (Arrow a b) = ArrowF a b
-	-- project 
+
+typeCata :: (Identifier -> a) -> (Identifier -> a) -> (a -> a -> a) -> Type -> a
+typeCata v c a = cata $ \case
+	(VariableF x) -> v x
+	(ConstructorF x) -> c x
+	(t1 `ArrowF` t2) -> a t1 t2
 
 typeInt :: Type
 typeInt = Constructor (Identifier "Int")

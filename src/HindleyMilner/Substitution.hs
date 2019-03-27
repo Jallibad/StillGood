@@ -2,8 +2,7 @@ module HindleyMilner.Substitution where
 
 import AST.Identifier
 import Control.Applicative (liftA2)
-import Control.Arrow-- ((>>>))
-import Data.Functor.Foldable
+import Control.Arrow
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -32,33 +31,16 @@ class Substitutable a where
 	-- The type variable `f` in the function signature is intended to hold errors, perhaps in Maybe or Either
 	changeVariables :: Monad m => (Identifier -> m Identifier) -> a -> m a
 
-class Recursive a => Substitutable' a where
-	freeVars' :: Base t (Set Identifier) -> Set Identifier
-
-instance Substitutable' Type where
-	freeVars' = undefined
-	-- freeVars' (VariableF i) = 
-
 instance Substitutable Type where
-	-- A type constructor contains nothing substitutable (base case)
-	apply _ (Constructor a) = Constructor a
 	-- A type variable can be substituted if in the map (base case)
-	apply s t@(Variable a) = Map.findWithDefault t a s
+	-- A type constructor contains nothing substitutable (base case)
 	-- In function application the function and argument should both be substituted recursively
-	apply s (t1 `Arrow` t2) = apply s t1 `Arrow` apply s t2
-
-	-- freeVars = cata thing
-	-- A type constructor contains no free variables
-	freeVars (Constructor _) = Set.empty
+	apply s = typeCata (\a -> Map.findWithDefault (Variable a) a s) Constructor Arrow
 	-- A type variable is by itself a single free variable
-	freeVars (Variable a) = Set.singleton a
+	-- A type constructor contains no free variables
 	-- A function application contains two subexpression with free variables
-	freeVars (t1 `Arrow` t2) = freeVars t1 `Set.union` freeVars t2
-
-	changeVariables :: Monad m => (Identifier -> m Identifier) -> Type -> m Type
-	changeVariables f (a `Arrow` b) = liftA2 Arrow (changeVariables f a) (changeVariables f b)
-	changeVariables _ (Constructor a) = pure $ Constructor a
-	changeVariables f (Variable a) = Variable <$> f a
+	freeVars = typeCata Set.singleton (const Set.empty) Set.union
+	changeVariables f = typeCata (fmap Variable . f) (pure . Constructor) (liftA2 Arrow)
 
 instance Substitutable Scheme where
 	apply s (Forall as t) = Forall as $ apply (foldr Map.delete s as) t

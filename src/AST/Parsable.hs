@@ -98,8 +98,7 @@ instance Parsable Expression where
 -- parseTypes (Lambda "x" (AST.Types.Variable "x"))
 -- parseTypes (Lambda "y" (Application (Lambda "x" (AST.Types.Variable "x")) (AST.Types.Variable "y")))
 parseTypes :: Expression -> Either TypeError Expression -- should return expressions with type built in
-parseTypes e =
-	let env = HindleyMilner.Type.empty in (getExplicitState (inferExplicitType env e))
+parseTypes = getExplicitState . inferExplicitType HindleyMilner.Type.empty
 
 -- doesn't get 'forall' types yet
 -- Given expression as a string, parse and infer types
@@ -108,6 +107,6 @@ parseExpression src e =
 	let ret1 = runParser parser src e in case ret1 of
 		Left _ -> ret1
 		Right e1 -> -- ret1 -- should run type inference here (using parseTypes, when finished)
-			let ret2 = (parseTypes e1) in case ret2 of
+			case parseTypes e1 of
 				Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
 				Right e2 -> Right e2

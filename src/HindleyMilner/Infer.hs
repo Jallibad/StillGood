@@ -1,6 +1,8 @@
 module HindleyMilner.Infer
-	( Infer
+	( ExpressionWithType (..)
+	, Infer
 	, fresh
+	, thing
 	, instantiate
 	, runInfer
 	, getExplicitState
@@ -23,20 +25,26 @@ type Infer a = ExceptT TypeError (State Unique) a
 
 type TypeVarLookupFunction = Identifier -> Either TypeError Identifier
 
+data ExpressionWithType = ExpressionWithType {expression :: ExpressionF ExpressionWithType, annotation :: Type}
+	deriving (Show)
+
 initUnique :: Unique
 initUnique = Unique 0
 
 freshVars :: [Identifier]
 freshVars = Identifier <$> ([1..] >>= flip replicateM ['a'..'z'])
 
+thing :: Infer a -> Either TypeError a
+thing = flip evalState initUnique . runExceptT
+
 runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
-runInfer m = join $ case flip evalState initUnique $ runExceptT m of
+runInfer m = join $ case thing m of
 	Left err -> Left err
 	Right res -> Right $ closeOver res
 
 -- get Subst, Type, and an Expression using ExplicitType
 getExplicitState :: Infer (Subst, Type, Expression) -> Either TypeError Expression
-getExplicitState m = case flip evalState initUnique $ runExceptT m of
+getExplicitState m = case thing m of
 	Left err -> Left err
 	Right (_, _, e) -> Right e
 
