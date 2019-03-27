@@ -1,4 +1,1 @@
-(\x -> x) x  + y
-{- multiline
-comment -}
--- (\x -> x) z
+(\x -> x) 1

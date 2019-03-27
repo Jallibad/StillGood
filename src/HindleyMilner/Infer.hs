@@ -3,9 +3,11 @@ module HindleyMilner.Infer
 	, fresh
 	, instantiate
 	, runInfer
+	, getExplicitState
 	) where
 
 import AST.Identifier
+import AST.Types
 import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.State
@@ -31,6 +33,12 @@ runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
 runInfer m = join $ case flip evalState initUnique $ runExceptT m of
 	Left err -> Left err
 	Right res -> Right $ closeOver res
+
+-- get Subst, Type, and an Expression using ExplicitType
+getExplicitState :: Infer (Subst, Type, Expression) -> Either TypeError Expression
+getExplicitState m = case flip evalState initUnique $ runExceptT m of
+	Left err -> Left err
+	Right (_, _, e) -> Right e
 
 closeOver :: (Subst, Type) -> Either TypeError Scheme
 closeOver = normalize . generalize empty . uncurry apply
