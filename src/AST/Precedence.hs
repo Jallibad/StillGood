@@ -1,6 +1,5 @@
 module AST.Precedence where
 
--- import AST.Identifier
 import AST.ShuntingYard hiding (popToQueue)
 import AST.Types
 import Control.Arrow
@@ -29,6 +28,7 @@ rpnApply op exprs =
 		1 -> Application op $ head exprs -- one arg left
 		_ -> Application (rpnApply op $ tail exprs) $ head exprs
 
+-- apply foldingFunction to list of expressions using foldl starting with empty list
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
@@ -38,6 +38,7 @@ rpn = head . foldl foldingFunction []
 				else f : xs
 		foldingFunction _ _ = undefined
 
+-- applies Application to two expressions?
 apply :: ApplicationRule
 apply = foldl1 Application
 

@@ -2,17 +2,20 @@ module AST.Parsable
 	( Parsable
 	, Parser
 	, parseExpression
+	, parseTypes
 	, parser
 	) where
 
 import AST.Identifier
 import AST.Precedence
 import AST.Types
+import HindleyMilner.Type (Type, TypeError, empty)
+import HindleyMilner.Infer (getExplicitState)
+import HindleyMilner (inferExplicitType) -- file, not in same package
 import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Foldable (foldr')
 import Data.Void (Void)
-import HindleyMilner.Type (Type)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer as L
@@ -36,7 +39,7 @@ instance Parsable Identifier where
 	parser = label "identifier" $ cts $ fmap Identifier $ liftA2 (:) letterChar $ many alphaNumChar
 
 instance Parsable Type where
-	parser = undefined
+	parser = undefined -- label "type" $ cts $
 
 -- typeDeclarator :: Parser ()
 -- typeDeclarator = void $ cts $ string "::"
@@ -90,6 +93,21 @@ term =	parens parser <|>
 
 instance Parsable Expression where
 	parser = label "expression" $ apply <$> some term
-	
-parseExpression :: String -> Either (ParseErrorBundle String Void) Expression
-parseExpression = runParser parser ""
+
+-- examples:
+-- parseTypes (Lambda "x" (AST.Types.Variable "x"))
+-- parseTypes (Lambda "y" (Application (Lambda "x" (AST.Types.Variable "x")) (AST.Types.Variable "y")))
+parseTypes :: Expression -> Either TypeError Expression -- should return expressions with type built in
+parseTypes e =
+	let env = HindleyMilner.Type.empty in (getExplicitState (inferExplicitType env e))
+
+-- doesn't get 'forall' types yet
+-- Given expression as a string, parse and infer types
+parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
+parseExpression src e =
+	let ret1 = runParser parser src e in case ret1 of
+		Left _ -> ret1
+		Right e1 -> -- ret1 -- should run type inference here (using parseTypes, when finished)
+			let ret2 = (parseTypes e1) in case ret2 of
+				Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
+				Right e2 -> Right e2

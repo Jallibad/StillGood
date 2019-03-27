@@ -25,8 +25,10 @@ bind a t
 	| occurs a t = throwError $ InfiniteType a t
 	| otherwise = pure $ Map.singleton a t	
 
+-- can I return a typed expression instead??
 infer :: Environment -> Expression -> Infer (Subst, Type)
 infer env = \case
+	BuiltIn _ -> pure ([], typeInt) -- for now, BuiltIn could be other types though
 	AST.Types.Variable x -> lookupEnv env x
 	Lambda argument body -> do
 		tv <- fresh
@@ -39,6 +41,29 @@ infer env = \case
 		(s2, t2) <- infer (apply s1 env) body
 		s3 <- unify (apply s2 t1) (Arrow t2 tv)
 		pure (s3 `compose` s2 `compose` s1, apply s3 tv)
+	_ -> undefined
+
+-- try to type and expression, return explicit type
+inferExplicitType :: Environment -> Expression -> Infer (Subst, Type, Expression)
+inferExplicitType env e = case e of
+	BuiltIn c -> do
+		pure ([], typeInt, (ExplicitType typeInt (BuiltIn c))) -- what if stored in the state?
+	AST.Types.Variable x -> do
+		(s, t) <- (lookupEnv env x) -- how should I deal with error?
+		pure (s, t, (ExplicitType t (AST.Types.Variable x)))
+	Lambda argument body -> do
+		tv <- fresh
+		let env' = env `extend` (argument, Forall [] tv)
+		(s, t, b) <- inferExplicitType env' body
+		-- (args, argt) <- (lookupEnv env argument)
+		let returnType = apply s tv `Arrow` t
+		pure (s, returnType, (ExplicitType returnType (Lambda argument b))) -- I need to figute out argument
+	Application function body -> do
+		tv <- fresh
+		(s1, t1, f) <- inferExplicitType env function
+		(s2, t2, b) <- inferExplicitType (apply s1 env) body
+		s3 <- unify (apply s2 t1) (Arrow t2 tv)
+		pure (s3 `compose` s2 `compose` s1, apply s3 tv, (ExplicitType (apply s3 tv)  (Application f b)))
 	_ -> undefined
 
 lookupEnv :: Environment -> Identifier -> Infer (Subst, Type)

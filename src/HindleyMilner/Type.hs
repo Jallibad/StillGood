@@ -38,6 +38,9 @@ instance Recursive Type where
 	project (Arrow a b) = ArrowF a b
 	-- project 
 
+typeInt :: Type
+typeInt = Constructor (Identifier "Int")
+
 numArgs :: Integral a => Type -> a
 numArgs (Variable _) = 0
 numArgs (Constructor _) = 0
