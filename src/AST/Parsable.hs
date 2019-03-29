@@ -103,10 +103,17 @@ parseTypes = getExplicitState . inferExplicitType HindleyMilner.Type.empty
 -- doesn't get 'forall' types yet
 -- Given expression as a string, parse and infer types
 parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
-parseExpression src e =
-	let ret1 = runParser parser src e in case ret1 of
+parseExpression src e = case ret1 of
 		Left _ -> ret1
 		Right e1 -> -- ret1 -- should run type inference here (using parseTypes, when finished)
 			case parseTypes e1 of
 				Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
 				Right e2 -> Right e2
+	where
+		ret1 = runParser parser src e
+
+-- thing :: Either a Expression -> Either a Expression
+thing ret1 = (\e1 -> case parseTypes e1 of
+			Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
+			Right e2 -> Right e2
+			) <$> ret1

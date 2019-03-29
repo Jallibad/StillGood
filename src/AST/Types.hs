@@ -22,6 +22,13 @@ data ExpressionF a = VariableF {identifier :: Identifier}
 				| ExplicitTypeF {annotation :: Type, expression :: a}
 				| BuiltInF String
 				deriving (Generic, Show, Functor)
+instance ToJSON a => ToJSON (ExpressionF a) where
+	toJSON (VariableF i) = object ["tag" .= String "Variable", "identifier" .= i]
+	toJSON (LambdaF a b) = object ["tag" .= String "Lambda", "argument" .= a, "body" .= b]
+	toJSON (ApplicationF f b) = object ["tag" .= String "Application", "function" .= f, "body" .= b]
+	toJSON (ExplicitTypeF _ _) = undefined
+	toJSON (BuiltInF i) = object ["tag" .= String "BuiltIn", "contents" .= i]
+instance FromJSON a => FromJSON (ExpressionF a)
 
 type instance Base Expression = ExpressionF
 instance Recursive Expression where

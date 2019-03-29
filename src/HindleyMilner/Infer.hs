@@ -13,8 +13,10 @@ import AST.Types
 import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Aeson
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import GHC.Generics (Generic)
 import HindleyMilner.Substitution
 import HindleyMilner.Scheme
 import HindleyMilner.Type
@@ -26,7 +28,11 @@ type Infer a = ExceptT TypeError (State Unique) a
 type TypeVarLookupFunction = Identifier -> Either TypeError Identifier
 
 data ExpressionWithType = ExpressionWithType {expression :: ExpressionF ExpressionWithType, annotation :: Type}
-	deriving (Show)
+	deriving (Generic, Show)
+
+instance ToJSON ExpressionWithType where
+	toEncoding = genericToEncoding defaultOptions
+instance FromJSON ExpressionWithType
 
 initUnique :: Unique
 initUnique = Unique 0

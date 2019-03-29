@@ -1,10 +1,12 @@
 module HindleyMilner where
 
 import AST.Identifier
-import AST.Types
+import AST.Types hiding (annotation)
 import Control.Applicative (liftA2)
 import Control.Arrow (second)
 import Control.Monad.Except
+import Data.Aeson (encode)
+import qualified Data.ByteString.Lazy.Char8 as BS (putStrLn)
 import Data.Functor.Foldable
 import qualified Data.Map.Strict as Map
 import HindleyMilner.Type
@@ -91,3 +93,8 @@ lookupEnv env x = case Map.lookup x env of
 	Just s -> do
 		t <- instantiate s
 		pure (nullSubst, t)
+
+test :: IO ()
+test = case encode . snd <$> thing (inferType empty (Lambda "x" $ BuiltIn "4")) of
+	Left _ -> undefined
+	Right x -> BS.putStrLn x
