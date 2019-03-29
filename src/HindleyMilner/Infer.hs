@@ -48,11 +48,15 @@ runInfer m = join $ case thing m of
 	Left err -> Left err
 	Right res -> Right $ closeOver res
 
+-- runInfer' :: Infer (Subst, (a, Type)) -> Either TypeError (a, Scheme)
+-- breakInfer :: Infer a -> Either TypeError a
+-- breakInfer m = case thing m of
+-- 	Left err -> Left err
+
+
 -- get Subst, Type, and an Expression using ExplicitType
 getExplicitState :: Infer (Subst, Type, Expression) -> Either TypeError Expression
-getExplicitState m = case thing m of
-	Left err -> Left err
-	Right (_, _, e) -> Right e
+getExplicitState m = (\(_, _, e) -> e) <$> thing m
 
 closeOver :: (Subst, Type) -> Either TypeError Scheme
 closeOver = normalize . generalize empty . uncurry apply

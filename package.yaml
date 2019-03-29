@@ -33,6 +33,7 @@ dependencies:
 - containers
 - mtl
 - recursion-schemes
+- optparse-applicative
 
 default-extensions:
 - TupleSections
