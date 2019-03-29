@@ -111,9 +111,3 @@ parseExpression src e = case ret1 of
 				Right e2 -> Right e2
 	where
 		ret1 = runParser parser src e
-
--- thing :: Either a Expression -> Either a Expression
-thing ret1 = (\e1 -> case parseTypes e1 of
-			Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
-			Right e2 -> Right e2
-			) <$> ret1
