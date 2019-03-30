@@ -1,12 +1,24 @@
 import sys, json, subprocess
 
 def getASTFromHaskell():
-    return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
+     """
+     Run the main Haskell routine on the input code file name in a subprocess, yielding the resulting AST
+     Returns the bytestring representation of a json encoded Abstract Syntax Tree
+     """
+     return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
 
 def getASTFromFile():
+    """
+     Read the contents of the input file name, storing the contained AST
+     Returns the string representation of a json encoded Abstract Syntax Tree
+     """
     return open(sys.argv[1]).read()
 
 def exitError(s):
+    """
+    Display the specified error message and exit the application
+    string s: the error string to display on exit
+    """
     print("Error: {0}".format(s).format(len(sys.argv)-1), file=sys.stderr)
     sys.exit(1)
 
