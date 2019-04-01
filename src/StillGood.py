@@ -1,4 +1,6 @@
 import sys, json, subprocess
+from llvmlite import ir
+from unittest.test.testmock.testpatch import function
 
 def getASTFromHaskell():
      """
@@ -34,7 +36,43 @@ def naiveAstToLLVM(jast):
     
     #build up the llvm code
     return "{0} {1}({2}) {{\nreturn {3};\n}}".format("int",funcName,funcArg,funcContents)
+
+def astToLLVM(jast):
+    """
+    Convert the input json encoded AST to LLVM code properly, using llvm-lite
+    JSON jast: the AST in JSON form produced by the main Haskell routine
+    Returns an ir module containing the LLVM code matching the input json encoded AST
+    """
+    #json indexing
+    function = jast["function"]
+    body = jast["body"] 
+    funcBody = function["body"]
     
+    #extract function information by keyword
+    funcArgs = function["argument"].split(",")
+    funcName = funcBody["identifier"]
+    funcContents = body["contents"]
+    
+    # define llvm types
+    l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
+    l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))])
+    
+    # create a module for the output
+    l_module = ir.Module(name=__file__)
+    # declare our new function
+    l_func = ir.Function(l_module, l_funcType, name=funcName)
+
+    # function entry point
+    block = l_func.append_basic_block(name="entry")
+    # create a builder for constructing the function code
+    builder = ir.IRBuilder(block)
+    # return value
+    
+    retVal = builder.fadd(l_func.args[0],l_int(funcContents),"retVal")
+    builder.ret(retVal)
+    
+    # Print the module IR
+    return l_module
 
 def exitError(s):
     """
@@ -51,7 +89,7 @@ def main():
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
     jast = json.loads(ast)
     # now convert the ast to llvm code
-    print(naiveAstToLLVM(jast))
+    print(astToLLVM(jast))
 
 if __name__ == "__main__":
     main()
