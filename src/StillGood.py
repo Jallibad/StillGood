@@ -1,6 +1,21 @@
 import sys, json, subprocess
 from llvmlite import ir
+import llvmlite.binding as llvm
 from unittest.test.testmock.testpatch import function
+
+from ctypes import CFUNCTYPE, c_double, c_int32
+
+llvm.initialize()
+llvm.initialize_native_target()
+llvm.initialize_native_asmprinter()
+
+def exitError(s):
+    """
+    Display the specified error message and exit the application
+    string s: the error string to display on exit
+    """
+    print("Error: {0}".format(s).format(len(sys.argv)-1), file=sys.stderr)
+    sys.exit(1)
 
 def getASTFromHaskell():
      """
@@ -16,6 +31,17 @@ def getASTFromFile():
      """
     return open(sys.argv[1]).read()
 
+def getTypeFromStr(s):
+    """
+    determine the type of the input string
+    string s: the string whose type we wish to get
+    Returns the type of the input string
+    """
+    try: 
+        int(s)
+        return "int"
+    except ValueError:
+        return "string"
 
 def naiveAstToLLVM(jast):
     """
@@ -37,23 +63,11 @@ def naiveAstToLLVM(jast):
     #build up the llvm code
     return "{0} {1}({2}) {{\nreturn {3};\n}}".format("int",funcName,funcArg,funcContents)
 
-def getTypeFromStr(s):
-    """
-    determine the type of the input string
-    string s: the string whose type we wish to get
-    Returns the type of the input string
-    """
-    try: 
-        int(s)
-        return "int"
-    except ValueError:
-        return "string"
-
 def astToLLVM(jast):
     """
     Convert the input json encoded AST to LLVM code properly, using llvm-lite
     JSON jast: the AST in JSON form produced by the main Haskell routine
-    Returns an ir module containing the LLVM code matching the input json encoded AST
+    Returns the new function name, and an ir module containing the LLVM code matching the input json encoded AST
     """
     #json indexing
     function = jast["function"]
@@ -84,15 +98,43 @@ def astToLLVM(jast):
         builder.ret(l_int(funcContents))
     
     # Print the module IR
-    return l_module
+    return funcName, l_module
 
-def exitError(s):
+def create_execution_engine():
     """
-    Display the specified error message and exit the application
-    string s: the error string to display on exit
+    Create an ExecutionEngine suitable for JIT code generation on
+    the host CPU.  The engine is reusable for an arbitrary number of modules.
+    Source: https://llvmlite.readthedocs.io/en/latest/user-guide/binding/examples.html
     """
-    print("Error: {0}".format(s).format(len(sys.argv)-1), file=sys.stderr)
-    sys.exit(1)
+    # Create a target machine representing the host
+    target = llvm.Target.from_default_triple()
+    target_machine = target.create_target_machine()
+    # And an execution engine with an empty backing module
+    backing_mod = llvm.parse_assembly("")
+    engine = llvm.create_mcjit_compiler(backing_mod, target_machine)
+    return engine
+    
+def compile_ir(engine, llvm_ir):
+    """
+    Compile the LLVM IR string with the given engine.
+    The compiled module object is returned.
+    Source: https://llvmlite.readthedocs.io/en/latest/user-guide/binding/examples.html
+    """
+    # Create a LLVM module object from the IR
+    mod = llvm.parse_assembly(llvm_ir)
+    mod.verify()
+    # Now add the module and make sure it is ready for execution
+    engine.add_module(mod)
+    engine.finalize_object()
+    engine.run_static_constructors()
+    return mod
+
+def compile_module(engine, mod):
+    """
+    Compile the LLVM IR module with the given engine.
+    The compiled module object is returned.
+    """
+    return compile_ir(engine,str(mod))
 
 def main():
     if (len(sys.argv) != 2):
@@ -101,7 +143,18 @@ def main():
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
     jast = json.loads(ast)
     # now convert the ast to llvm code
-    print(astToLLVM(jast))
+    funcName, llvm_ir = astToLLVM(jast)
+    
+    engine = create_execution_engine()
+    mod = compile_module(engine, llvm_ir)
+    
+    # Look up the function pointer (a Python int)
+    func_ptr = engine.get_function_address(funcName)
+    
+    # Run the function via ctypes and test the output
+    cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
+    res = cfunc(3)
+    print("{0}(...) = {1}".format(funcName,res))
 
 if __name__ == "__main__":
     main()
