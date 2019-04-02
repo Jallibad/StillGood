@@ -37,6 +37,18 @@ def naiveAstToLLVM(jast):
     #build up the llvm code
     return "{0} {1}({2}) {{\nreturn {3};\n}}".format("int",funcName,funcArg,funcContents)
 
+def getTypeFromStr(s):
+    """
+    determine the type of the input string
+    string s: the string whose type we wish to get
+    Returns the type of the input string
+    """
+    try: 
+        int(s)
+        return "int"
+    except ValueError:
+        return "string"
+
 def astToLLVM(jast):
     """
     Convert the input json encoded AST to LLVM code properly, using llvm-lite
@@ -55,7 +67,7 @@ def astToLLVM(jast):
     
     # define llvm types
     l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
-    l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))])
+    l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))]) # match number of function arguments
     
     # create a module for the output
     l_module = ir.Module(name=__file__)
@@ -67,9 +79,9 @@ def astToLLVM(jast):
     # create a builder for constructing the function code
     builder = ir.IRBuilder(block)
     # return value
-    
-    retVal = builder.fadd(l_func.args[0],l_int(funcContents),"retVal")
-    builder.ret(retVal)
+    contentType = getTypeFromStr(funcContents)
+    if (contentType == "int"):
+        builder.ret(l_int(funcContents))
     
     # Print the module IR
     return l_module
