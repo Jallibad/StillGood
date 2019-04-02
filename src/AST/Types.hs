@@ -21,7 +21,8 @@ data ExpressionF a = VariableF {identifier :: Identifier}
 				| ApplicationF {function :: a, body :: a}
 				| ExplicitTypeF {annotation :: Type, expression :: a}
 				| BuiltInF String
-				deriving (Generic, Show, Functor)
+				deriving (Generic, Show, Functor, Foldable, Traversable)
+
 instance ToJSON a => ToJSON (ExpressionF a) where
 	toJSON (VariableF i) = object ["tag" .= String "Variable", "identifier" .= i]
 	toJSON (LambdaF a b) = object ["tag" .= String "Lambda", "argument" .= a, "body" .= b]

@@ -32,10 +32,8 @@ rpnApply op exprs =
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
-		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =
-			let argNum = (numArgs t) in
-				if argNum > 0 then (rpnApply f (Prelude.take argNum xs)) : (Prelude.drop argNum xs)
-				else f : xs
+		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =	if argNum > 0 then rpnApply f (Prelude.take argNum xs) : Prelude.drop argNum xs else f : xs
+			where argNum = numArgs t
 		foldingFunction _ _ = undefined
 
 -- applies Application to two expressions?

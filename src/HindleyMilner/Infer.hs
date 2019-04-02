@@ -2,7 +2,7 @@ module HindleyMilner.Infer
 	( ExpressionWithType (..)
 	, Infer
 	, fresh
-	, thing
+	, unwrapInfer
 	, instantiate
 	, runInfer
 	, getExplicitState
@@ -13,10 +13,10 @@ import AST.Types
 import Control.Arrow
 import Control.Monad.Except
 import Control.Monad.State
-import Data.Aeson
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import GHC.Generics (Generic)
+import HindleyMilner.Environment
+import HindleyMilner.ExpressionWithType
 import HindleyMilner.Substitution
 import HindleyMilner.Scheme
 import HindleyMilner.Type
@@ -27,24 +27,17 @@ type Infer a = ExceptT TypeError (State Unique) a
 
 type TypeVarLookupFunction = Identifier -> Either TypeError Identifier
 
-data ExpressionWithType = ExpressionWithType {expression :: ExpressionF ExpressionWithType, annotation :: Type}
-	deriving (Generic, Show)
-
-instance ToJSON ExpressionWithType where
-	toEncoding = genericToEncoding defaultOptions
-instance FromJSON ExpressionWithType
-
 initUnique :: Unique
 initUnique = Unique 0
 
 freshVars :: [Identifier]
 freshVars = Identifier <$> ([1..] >>= flip replicateM ['a'..'z'])
 
-thing :: Infer a -> Either TypeError a
-thing = flip evalState initUnique . runExceptT
+unwrapInfer :: Infer a -> Either TypeError a
+unwrapInfer = flip evalState initUnique . runExceptT
 
 runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
-runInfer m = join $ case thing m of
+runInfer m = join $ case unwrapInfer m of
 	Left err -> Left err
 	Right res -> Right $ closeOver res
 
@@ -56,7 +49,7 @@ runInfer m = join $ case thing m of
 
 -- get Subst, Type, and an Expression using ExplicitType
 getExplicitState :: Infer (Subst, Type, Expression) -> Either TypeError Expression
-getExplicitState m = (\(_, _, e) -> e) <$> thing m
+getExplicitState m = (\(_, _, e) -> e) <$> unwrapInfer m
 
 closeOver :: (Subst, Type) -> Either TypeError Scheme
 closeOver = normalize . generalize empty . uncurry apply

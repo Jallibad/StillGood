@@ -9,9 +9,11 @@ import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy.Char8 as BS (putStrLn)
 import Data.Functor.Foldable
 import qualified Data.Map.Strict as Map
-import HindleyMilner.Type
-import HindleyMilner.Substitution
+import HindleyMilner.Environment
 import HindleyMilner.Infer
+import HindleyMilner.Scheme
+import HindleyMilner.Substitution
+import HindleyMilner.Type
 
 extend :: Environment -> (Identifier, Scheme) -> Environment
 extend env (x, s) = Map.insert x s env
@@ -95,6 +97,6 @@ lookupEnv env x = case Map.lookup x env of
 		pure (nullSubst, t)
 
 test :: IO ()
-test = case encode . snd <$> thing (inferType empty (Lambda "x" $ BuiltIn "4")) of
-	Left _ -> undefined
+test = case encode . uncurry apply <$> unwrapInfer (inferType empty $ Application (Lambda "x" $ BuiltIn "4") $ BuiltIn "4") of
+	Left x -> print x
 	Right x -> BS.putStrLn x

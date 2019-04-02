@@ -9,7 +9,8 @@ module AST.Parsable
 import AST.Identifier
 import AST.Precedence
 import AST.Types
-import HindleyMilner.Type (Type, TypeError, empty)
+import HindleyMilner.Environment (empty)
+import HindleyMilner.Type (Type, TypeError)
 import HindleyMilner.Infer (getExplicitState)
 import HindleyMilner (inferExplicitType) -- file, not in same package
 import Control.Applicative (liftA2)
@@ -79,7 +80,9 @@ builtIn :: Parser Expression
 builtIn = BuiltIn <$> cts (
 			some digitChar <|>
 			chunk "+" <|>
+			chunk "add" <|>
 			chunk "-" <|>
+			chunk "sub" <|>
 			chunk "*" <|>
 			chunk "^" <|>
 			chunk ";" )
@@ -98,7 +101,7 @@ instance Parsable Expression where
 -- parseTypes (Lambda "x" (AST.Types.Variable "x"))
 -- parseTypes (Lambda "y" (Application (Lambda "x" (AST.Types.Variable "x")) (AST.Types.Variable "y")))
 parseTypes :: Expression -> Either TypeError Expression -- should return expressions with type built in
-parseTypes = getExplicitState . inferExplicitType HindleyMilner.Type.empty
+parseTypes = getExplicitState . inferExplicitType HindleyMilner.Environment.empty
 
 -- doesn't get 'forall' types yet
 -- Given expression as a string, parse and infer types
@@ -111,3 +114,4 @@ parseExpression src e = case ret1 of
 				Right e2 -> Right e2
 	where
 		ret1 = runParser parser src e
+
