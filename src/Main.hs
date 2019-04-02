@@ -26,10 +26,6 @@ compile (Opts inFile outFile) = case outFile of
 sourceToJSON :: String -> String -> ByteString
 sourceToJSON = (either encode encode .) . runParser (parser @Expression)
 
-data SGParser = SGParser {
-	optInput :: String
-}
-
 data Opts = Opts
 	{ optInput :: String
 	, optOutput :: Maybe String }
