@@ -148,13 +148,18 @@ def main():
     engine = create_execution_engine()
     mod = compile_module(engine, llvm_ir)
     
+    #write module to a file
+    with open("output.ll","w") as f:
+        f.write(str(mod))
+
     # Look up the function pointer (a Python int)
     func_ptr = engine.get_function_address(funcName)
     
     # Run the function via ctypes and test the output
     cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
-    res = cfunc(3)
-    print("{0}(...) = {1}".format(funcName,res))
+    testArg = 8
+    res = cfunc(testArg)
+    print("{0}({1}) = {2}".format(funcName,testArg, res))
 
 if __name__ == "__main__":
     main()
