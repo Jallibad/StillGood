@@ -1,15 +1,13 @@
 module HindleyMilner.Substitution
 	( Subst
 	, Substitutable (..)
-	, TypeVarAssocList
 	, compose
-	, lookupF
 	, nullSubst
+	, removeSubstitutions
 	) where
 
-import AST.Identifier
+import AST.Identifier (Identifier)
 import Control.Applicative (liftA2)
-import Control.Arrow ((&&&))
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -25,10 +23,16 @@ compose s1 = Map.union s1 . fmap (apply s1)
 nullSubst :: Subst
 nullSubst = Map.empty
 
+-- |Removes collections of Identifiers from the substitution Map
+removeSubstitutions :: Foldable f => Subst -> f Identifier -> Subst
+removeSubstitutions = foldr Map.delete
+
 -- |Instances of this class have potentially nested subexpressions, this helps us generically traverse them
 class Substitutable a where
 	-- |Apply a substitution to a type, potentially recursively
 	apply :: Subst -> a -> a
+	apply' :: (Subst, a) -> a
+	apply' = uncurry apply
 	-- |Query for free variables, potentially recursively
 	freeVars :: a -> Set Identifier
 	-- |Query for occurence of specified free variable in expression
@@ -62,14 +66,3 @@ instance (Traversable f, Substitutable a) => Substitutable (f a) where
 -- instance Substitutable Environment where
 -- 	apply s (Environment env) = Environment $ fmap (apply s) env
 -- 	freeVars (Environment env) = freeVars $ Map.elems env
-
-type TypeVarAssocList a = [(Identifier, a)]
-
--- |Adds an UnboundVariable error with the corresponding Identifier if the second
--- argument is nothing, otherwise passes the value through the right
-addError :: Identifier -> Maybe a -> Either TypeError a
-addError = flip maybe Right . Left . UnboundVariable
-
--- |Looks up a type variable in an associative list, returns a TypeError if not in the list
-lookupF :: Identifier -> TypeVarAssocList a -> Either TypeError a
-lookupF = uncurry (.) . (addError &&& lookup)

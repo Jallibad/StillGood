@@ -1,6 +1,6 @@
 module AST.ShuntingYard where
 
-import AST.Types
+import AST.Expression
 import Control.Arrow ((***))
 import Data.Sequence
 

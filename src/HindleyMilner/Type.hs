@@ -5,13 +5,6 @@ import Data.Aeson
 import Data.Functor.Foldable
 import GHC.Generics (Generic)
 
-data TypeError
-	= UnificationFail Type Type
-	| InfiniteType Identifier Type
-	| TooManyArguments -- TODO Add context details
-	| UnboundVariable Identifier
-	deriving (Show)
-
 data Type
 	= Variable Identifier
 	| Constructor Identifier
@@ -44,6 +37,4 @@ typeInt :: Type
 typeInt = Constructor $ Identifier "Int"
 
 numArgs :: Integral a => Type -> a
-numArgs (Variable _) = 0
-numArgs (Constructor _) = 0
-numArgs (Arrow _ a) = numArgs a + 1
+numArgs = typeCata (const 0) (const 0) (const succ)

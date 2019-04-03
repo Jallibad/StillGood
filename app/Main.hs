@@ -1,12 +1,16 @@
 module Main where
 
 import AST.Parsable (parser)
-import AST.Types (Expression)
-import Data.Aeson
+import qualified AST.Parsable as AST (Parser)
+import AST.Expression (Expression)
+import Data.Aeson (encode)
 import Data.ByteString.Lazy (ByteString, writeFile)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import ParseErrorBundleJSON ()
+import Data.ByteString.Lazy.Char8 (putStrLn)
+import HindleyMilner (addType)
+import HindleyMilner.Environment as HI (empty)
 import Options.Applicative
+import ParseErrorBundleJSON ()
+import Prelude hiding (putStrLn, writeFile)
 import Text.Megaparsec
 
 main :: IO ()
@@ -16,15 +20,12 @@ main = compile =<< execParser opts
 			(fullDesc
 			<> header "Compiler for StillGood.")
 
-compile :: Opts -> IO()
-compile (Opts inFile outFile) = case outFile of
-		Nothing -> readFile inFile >>= BS.putStrLn . sourceToJSON inFile
-		Just outfile -> readFile inFile >>= Data.ByteString.Lazy.writeFile outfile . sourceToJSON inFile  -- if outfile, then writeFile
+compile :: Opts -> IO ()
+compile (Opts inFile outFile) = readFile inFile >>= maybe putStrLn writeFile outFile . sourceToJSON inFile
 
 -- |@sourceToJSON source filename@ converts a source file to a JSON encoded ByteString
-
 sourceToJSON :: String -> String -> ByteString
-sourceToJSON = (either encode encode .) . runParser (parser @Expression)
+sourceToJSON = (either encode (encode . addType HI.empty) .) . runParser (parser :: AST.Parser Expression)
 
 data Opts = Opts
 	{ optInput :: String
@@ -39,7 +40,7 @@ options = Opts
 	<$> argument str
 		(metavar "filename"
 		<> help "Program file" )
-	<*> (optional $ strOption
+	<*> optional (strOption
 		( long "output"
 		<> short 'o'
 		<> metavar "filename"

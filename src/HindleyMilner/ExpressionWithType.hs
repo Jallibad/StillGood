@@ -2,13 +2,15 @@ module HindleyMilner.ExpressionWithType
 	( ExpressionWithType (..)
 	) where
 
-import AST.Types
+import AST.Expression
 import Data.Aeson
 import GHC.Generics (Generic)
 import HindleyMilner.Substitution
 import HindleyMilner.Type
 
-data ExpressionWithType = ExpressionWithType {expression :: ExpressionF ExpressionWithType, annotation :: Type}
+-- |An expression and its type, subexpressions also explicitly have their own types.
+data ExpressionWithType =
+	ExpressionWithType {expression :: ExpressionF ExpressionWithType, annotation :: Type}
 	deriving (Generic, Show)
 
 instance ToJSON ExpressionWithType where
