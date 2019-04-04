@@ -138,7 +138,7 @@ def compile_module(engine, mod):
 
 def main():
     if (len(sys.argv) != 2):
-        exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile")
+        exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile [outputFile]")
     # if we specified a StillGood file, run it through Haskell to get the AST. Otherwise, read the AST directly from the file
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
     jast = json.loads(ast)
@@ -148,18 +148,20 @@ def main():
     engine = create_execution_engine()
     mod = compile_module(engine, llvm_ir)
     
-    #write module to a file
-    with open("output.ll","w") as f:
-        f.write(str(mod))
-
-    # Look up the function pointer (a Python int)
-    func_ptr = engine.get_function_address(funcName)
-    
-    # Run the function via ctypes and test the output
-    cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
-    testArg = 8
-    res = cfunc(testArg)
-    print("{0}({1}) = {2}".format(funcName,testArg, res))
+    if (len(sys.argv) == 3):
+        # if the user specified an output file name, write the generated llvm code to that file
+        with open(sys.argv[2]+".ll","w") as f:
+            f.write(str(mod))
+    else:
+        # no output file was specified, so run the generated code directly in Python via ctypes instead
+        # Look up the function pointer (a Python int) 
+        func_ptr = engine.get_function_address(funcName)
+        
+        # Run the function and test the output
+        cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
+        testArg = 8
+        res = cfunc(testArg)
+        print("{0}({1}) = {2}".format(funcName,testArg, res))
 
 if __name__ == "__main__":
     main()
