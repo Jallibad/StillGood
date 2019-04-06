@@ -2,10 +2,10 @@ module HindleyMilner.TypeError
 	( TypeError (..)
 	) where
 
-import AST.Identifier
+import AST.Identifier (Identifier)
 import Data.Aeson
 import GHC.Generics (Generic)
-import HindleyMilner.Type
+import HindleyMilner.Type (Type)
 
 -- |An enumeration of the different methods of type errors
 data TypeError
@@ -14,6 +14,7 @@ data TypeError
 	| TooManyArguments -- TODO Add context details
 	| UnboundVariable Identifier
 	deriving (Generic, Show)
+
 instance ToJSON TypeError where
 	toEncoding = genericToEncoding defaultOptions
 instance FromJSON TypeError

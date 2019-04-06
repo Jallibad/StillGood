@@ -1,56 +1,57 @@
 module HindleyMilner
 	( addType
 	, test
-	, testExp
 	) where
 
-import AST.Expression as AST hiding (annotation)
-import AST.Identifier
-import Control.Applicative (liftA2)
-import Control.Arrow (second)
+import AST.Expression (Expression, ExpressionF (..))
 import Control.Monad.Except
 import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy.Char8 as BS (putStrLn)
-import Data.Functor.Foldable
-import qualified Data.Map.Strict as Map
-import HindleyMilner.Environment
+import Data.Functor.Foldable (cata)
+import HindleyMilner.Environment (Environment, (!?))
 import HindleyMilner.Infer
-import HindleyMilner.Substitution
-import HindleyMilner.Type
-import HindleyMilner.TypeError
-
--- extend :: Environment -> (Identifier, Scheme) -> Environment
--- extend env (x, s) = Map.insert x s env
-
-unify :: Type -> Type -> Infer Subst
-unify (l1 `Arrow` r1) (l2 `Arrow` r2) = liftA2 compose (unify l1 l2) (unify r1 r2)
-unify (HindleyMilner.Type.Variable a) t = bind a t
-unify t (HindleyMilner.Type.Variable a) = bind a t
-unify (Constructor a) (Constructor b) | a == b = pure nullSubst
-unify t1 t2 = throwError $ UnificationFail t1 t2
-
-bind :: Identifier -> Type -> Infer Subst
-bind a t
-	| t == HindleyMilner.Type.Variable a = pure nullSubst
-	| occurs a t = throwError $ InfiniteType a t
-	| otherwise = pure $ Map.singleton a t	
+import HindleyMilner.Scheme (instantiate)
+import HindleyMilner.Substitution (Subst, apply')
+import HindleyMilner.Type (Type (..), typeInt)
+import HindleyMilner.TypeError (TypeError (..))
 
 inferType :: Environment -> Expression -> Infer (Subst, ExpressionWithType)
 inferType env = cata $ \case
-	(BuiltInF x) -> pure ([], ExpressionWithType (BuiltInF x) typeInt)
-	(AST.VariableF x) -> second (ExpressionWithType $ AST.VariableF x) <$> lookupEnv env x
+	-- If we see a builtin add a hardcoded type to it
+	-- TODO Support type inference on other builtins (needed for operator parsing)
+	(BuiltInF x) -> pure (mempty, ExpressionWithType (BuiltInF x) typeInt)
+
+	-- If we see a variable look it up from our environment
+	-- (VariableF x) -> second (ExpressionWithType $ VariableF x) <$> lookupEnv env x
+	(VariableF x) -> maybe
+		-- If the variable isn't found throw an error
+		(throwError $ UnboundVariable x)
+		-- If the variable is found put a null substitution in and 
+		((mempty,) <.> ExpressionWithType (VariableF x) <.> flip instantiate fresh)
+		-- Lookup happens here
+		(env !? x)
+
+	-- If we see a lambda make a new type "freshVar -> bodyType"
+	-- where bodyType is the inferred type of the body of the lambda
+	-- TODO Add the argument to the current list of environment variables. Or maybe change
+	-- how Environment works to allow demanding for future binding of free variables?
 	(LambdaF argument body) -> do
 		(s, body') <- body
-		outerType <- flip Arrow (HindleyMilner.Infer.annotation body') <$> fresh
+		outerType <- flip Arrow (annotation body') <$> fresh
 		pure (s, ExpressionWithType (LambdaF argument body') outerType)
+
+	-- If we see a function application infer the types, then unify the function's
+	-- argument type and the body type, and infer the function's return type
 	(ApplicationF function body) -> do
 		(s1, function') <- function
 		(s2, body') <- body
-		case HindleyMilner.Infer.annotation function' of
+		case annotation function' of
 			(Arrow t1 t2) -> do
-				s3 <- unify t1 $ HindleyMilner.Infer.annotation body'
-				pure (s3 `compose` s2 `compose` s1, ExpressionWithType (ApplicationF function' body') t2)
+				s3 <- unify t1 $ annotation body'
+				pure (s3 <> s2 <> s1, ExpressionWithType (ApplicationF function' body') t2)
 			_ -> throwError TooManyArguments
+
+	-- ExplicitType is deprecated and should soon be eliminated, don't bother handling
 	(ExplicitTypeF _ _) -> undefined
 
 infixr 9 <.>
@@ -60,37 +61,8 @@ infixr 9 <.>
 addType :: Environment -> Expression -> Either TypeError ExpressionWithType
 addType env = apply' <.> unwrapInfer . inferType env
 
--- try to type and expression, return explicit type
--- inferExplicitType :: Environment -> Expression -> Infer (Subst, Type, Expression)
--- inferExplicitType env e = case e of
--- 	BuiltIn c -> pure ([], typeInt, ExplicitType typeInt (BuiltIn c)) -- what if stored in the state?
--- 	AST.Types.Variable x -> do
--- 		(s, t) <- lookupEnv env x -- how should I deal with error?
--- 		pure (s, t, ExplicitType t (AST.Types.Variable x))
--- 	Lambda argument body -> do
--- 		tv <- fresh
--- 		let env' = env `extend` (argument, Forall [] tv)
--- 		(s, t, b) <- inferExplicitType env' body
--- 		-- (args, argt) <- (lookupEnv env argument)
--- 		let returnType = apply s tv `Arrow` t
--- 		pure (s, returnType, ExplicitType returnType (Lambda argument b)) -- I need to figute out argument
--- 	Application function body -> do
--- 		tv <- fresh
--- 		(s1, t1, f) <- inferExplicitType env function
--- 		(s2, t2, b) <- inferExplicitType (apply s1 env) body
--- 		s3 <- unify (apply s2 t1) (Arrow t2 tv)
--- 		pure (s3 `compose` s2 `compose` s1, apply s3 tv, ExplicitType (apply s3 tv)  (Application f b))
--- 	_ -> undefined
-
-lookupEnv :: Environment -> Identifier -> Infer (Subst, Type)
-lookupEnv env x = case Map.lookup x env of
-	Nothing -> throwError $ UnboundVariable x
-	Just s -> do
-		t <- instantiate s
-		pure (nullSubst, t)
-
 test :: Expression -> IO ()
-test = either print (BS.putStrLn . encode) . addType empty
+test = either print (BS.putStrLn . encode) . addType mempty
 
-testExp :: Expression
-testExp = Application (Lambda "x" $ BuiltIn "4") $ BuiltIn "4"
+-- testExp :: Expression
+-- testExp = Application (Lambda "x" $ BuiltIn "4") $ BuiltIn "4"

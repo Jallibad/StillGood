@@ -19,7 +19,7 @@ data Expression
 	-- |An expression (function) with another expression (body) being applied to it.
 	| Application {function :: Expression, body :: Expression}
 	-- |Should be deprecated in the near future
-	| ExplicitType {annotation :: Type, expression :: Expression}
+	| ExplicitType {annotation' :: Type, expression :: Expression}
 	-- |A string built into the compiler, contains language primitives.
 	-- Should probably be broken into different types
 	| BuiltIn String
@@ -33,7 +33,8 @@ data ExpressionF a
 	= VariableF {identifier :: Identifier}
 	| LambdaF {argument :: Identifier, body :: a}
 	| ApplicationF {function :: a, body :: a}
-	| ExplicitTypeF {annotation :: Type, expression :: a}
+	-- |Should be deprecated in the near future
+	| ExplicitTypeF {annotation' :: Type, expression :: a}
 	| BuiltInF String
 	deriving (Generic, Show, Functor, Foldable, Traversable)
 

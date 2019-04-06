@@ -2,10 +2,10 @@ module HindleyMilner.ExpressionWithType
 	( ExpressionWithType (..)
 	) where
 
-import AST.Expression
+import AST.Expression (ExpressionF)
 import Data.Aeson
 import GHC.Generics (Generic)
-import HindleyMilner.Substitution
+import HindleyMilner.Substitution (Substitutable (..))
 import HindleyMilner.Type
 
 -- |An expression and its type, subexpressions also explicitly have their own types.
@@ -19,5 +19,5 @@ instance FromJSON ExpressionWithType
 
 instance Substitutable ExpressionWithType where
 	apply s (ExpressionWithType e t) = ExpressionWithType (apply s e) (apply s t)
-	freeVars (ExpressionWithType e _) = freeVars e
+	freeVars = freeVars . expression
 	changeVariables f (ExpressionWithType e t) = flip ExpressionWithType t <$> changeVariables f e

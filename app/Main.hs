@@ -7,7 +7,6 @@ import Data.Aeson (encode)
 import Data.ByteString.Lazy (ByteString, writeFile)
 import Data.ByteString.Lazy.Char8 (putStrLn)
 import HindleyMilner (addType)
-import HindleyMilner.Environment as HI (empty)
 import Options.Applicative
 import ParseErrorBundleJSON ()
 import Prelude hiding (putStrLn, writeFile)
@@ -25,7 +24,7 @@ compile (Opts inFile outFile) = readFile inFile >>= maybe putStrLn writeFile out
 
 -- |@sourceToJSON source filename@ converts a source file to a JSON encoded ByteString
 sourceToJSON :: String -> String -> ByteString
-sourceToJSON = (either encode (encode . addType HI.empty) .) . runParser (parser :: AST.Parser Expression)
+sourceToJSON = (either encode (encode . addType mempty) .) . runParser (parser :: AST.Parser Expression)
 
 data Opts = Opts
 	{ optInput :: String

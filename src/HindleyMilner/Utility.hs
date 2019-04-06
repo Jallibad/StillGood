@@ -6,8 +6,9 @@ module HindleyMilner.Utility
 import AST.Identifier
 import Control.Arrow ((&&&))
 import Control.Monad.State (replicateM)
+import Data.Set (Set)
 import qualified Data.Set as Set
-import HindleyMilner.Scheme (Scheme (..), reconstructScheme)
+import HindleyMilner.Scheme (Scheme, reconstructScheme)
 import HindleyMilner.Substitution
 import HindleyMilner.Type
 import HindleyMilner.TypeError
@@ -23,8 +24,8 @@ freshVars = Identifier <$> ([1..] >>= flip replicateM ['a'..'z'])
 makeAssocList :: Substitutable a => a -> TypeVarAssocList Identifier
 makeAssocList = flip zip freshVars . Set.toList . freeVars
 
-boundVarsAndLookup :: [(Identifier, a)] -> ([a], TypeVarLookupFunction a)
-boundVarsAndLookup = fmap snd &&& flip lookupF
+boundVarsAndLookup :: Ord a => [(Identifier, a)] -> (Set a, TypeVarLookupFunction a)
+boundVarsAndLookup = Set.fromList . fmap snd &&& flip lookupF
 
 -- |Reset the bound type variables (maybe we've bound @['a','d','z']@) to our list of fresh variables @['a','b','c']@
 -- example: @normalize (Forall [Identifier "b"] $ Variable $ Identifier "b")@

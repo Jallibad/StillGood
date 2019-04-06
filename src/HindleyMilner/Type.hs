@@ -1,14 +1,22 @@
-module HindleyMilner.Type where
+module HindleyMilner.Type
+	( Type (..)
+	, TypeF (..)
+	, numArgs
+	, typeCata
+	, typeInt
+	) where
 
 import AST.Identifier
 import Data.Aeson
 import Data.Functor.Foldable
 import GHC.Generics (Generic)
 
+-- |Represents the type signature of a StillGood expression
 data Type
 	= Variable Identifier
 	| Constructor Identifier
 	| Arrow Type Type
+	-- TODO Add application in the future to support type level functions
 	deriving (Generic, Show, Eq, Ord)
 instance ToJSON Type where
 	toEncoding = genericToEncoding defaultOptions
@@ -18,6 +26,7 @@ data TypeF a
 	= VariableF Identifier
 	| ConstructorF Identifier
 	| ArrowF a a
+	-- TODO After adding application to Type add here to support recursive application
 	deriving (Generic, Show, Eq, Ord, Functor)
 
 type instance Base Type = TypeF
