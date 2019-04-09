@@ -10,3 +10,7 @@ StillGood.cabal
 Debug
 tmp
 .pydevproject
+
+# temp files
+src/scratch
+src/build

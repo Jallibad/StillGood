@@ -16,6 +16,6 @@ Usage:
 -Run "stack build" to build the Haskell portion of the codebase  
 -Run stack exec StillGood filename where 'filename' is your test program. Alternatively, you can run stack ghci to work with GHC's interactive environment.  
 -Run "python StillGood.py inputCodeFile|inputJSONFile" to compile the specified code file or pre-compiled AST JSON file to LLVM  
--Teplace target triple field in "output.ll" with supported architecture listed by llc --version  
+-Replace target triple field in "output.ll" with supported architecture listed by clang --version  
 -Run llc -filetype=obj output.ll to generate an output file  
 -Run clang output.obj to generate an executable file

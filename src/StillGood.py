@@ -49,18 +49,18 @@ def naiveAstToLLVM(jast):
     JSON jast: the AST in JSON form produced by the main Haskell routine
     Returns a string containing the LLVM code matching the input json encoded AST
     """
-    #json indexing
+    # json indexing
     function = jast["function"]
     body = jast["body"] 
     funcBody = function["body"]
     
-    #extract function information by keyword
+    # extract function information by keyword
     funcArg = function["argument"]
     funcName = funcBody["identifier"]
     funcContents = body["contents"]
     print("full jast: {0}\nargument: {1}, name: {2}, contents: {3}".format(jast,funcArg,funcName,funcContents))
     
-    #build up the llvm code
+    # build up the llvm code
     return "{0} {1}({2}) {{\nreturn {3};\n}}".format("int",funcName,funcArg,funcContents)
 
 def astToLLVM(jast):
@@ -69,14 +69,15 @@ def astToLLVM(jast):
     JSON jast: the AST in JSON form produced by the main Haskell routine
     Returns the new function name, and an ir module containing the LLVM code matching the input json encoded AST
     """
-    #json indexing
+    # json indexing
     function = jast["function"]
     body = jast["body"] 
     funcBody = function["body"]
     
-    #extract function information by keyword
+    # extract function information by keyword
     funcArgs = function["argument"].split(",")
-    funcName = funcBody["identifier"]
+    # TODO: hard-code function name to "main" temporarily so we can call StillGood methods directly during testing
+    funcName = "main" #funcBody["identifier"]
     funcContents = body["contents"]
     
     # define llvm types
@@ -137,7 +138,7 @@ def compile_module(engine, mod):
     return compile_ir(engine,str(mod))
 
 def main():
-    if (len(sys.argv) != 2):
+    if (not len(sys.argv) in [2,3]):
         exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile [outputFile]")
     # if we specified a StillGood file, run it through Haskell to get the AST. Otherwise, read the AST directly from the file
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
@@ -150,8 +151,20 @@ def main():
     
     if (len(sys.argv) == 3):
         # if the user specified an output file name, write the generated llvm code to that file
+        # manually add target to .ll output so we can compile it to a proper executable
+        modOut = str(mod)
+        tripleLocQ1 = modOut.find("target triple = ")+16
+        tripleLocQ2 = modOut.find('"',tripleLocQ1+1)
+        # extract our platform architecture from clang's version info
+        properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
+        modOut = modOut[:tripleLocQ1+1] + properTarget + modOut[tripleLocQ2:]
         with open(sys.argv[2]+".ll","w") as f:
-            f.write(str(mod))
+            f.write(modOut)
+        
+        # now compile the .ll to a .obj with llc
+        subprocess.run("llc -filetype=obj " + sys.argv[2] + ".ll")
+        # finally, compile the .obj to an executable with clang
+        subprocess.run("clang " + sys.argv[2] + ".obj -o " + sys.argv[2] + ".exe")
     else:
         # no output file was specified, so run the generated code directly in Python via ctypes instead
         # Look up the function pointer (a Python int) 
