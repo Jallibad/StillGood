@@ -4,9 +4,10 @@ module HindleyMilner.Type
 	, numArgs
 	, typeCata
 	, typeInt
+	, typeIO
 	) where
 
-import AST.Identifier
+import AST.Identifier (Identifier)
 import Data.Aeson
 import Data.Functor.Foldable
 import GHC.Generics (Generic)
@@ -15,7 +16,7 @@ import GHC.Generics (Generic)
 data Type
 	= Variable Identifier
 	| Constructor Identifier
-	| Arrow Type Type
+	| Arrow {input :: Type, output :: Type}
 	-- TODO Add application in the future to support type level functions
 	deriving (Generic, Show, Eq, Ord)
 instance ToJSON Type where
@@ -43,7 +44,10 @@ typeCata v c a = cata $ \case
 	(t1 `ArrowF` t2) -> a t1 t2
 
 typeInt :: Type
-typeInt = Constructor $ Identifier "Int"
+typeInt = Constructor "Int"
+
+typeIO :: Type
+typeIO = Constructor "IO"
 
 numArgs :: Integral a => Type -> a
 numArgs = typeCata (const 0) (const 0) (const succ)

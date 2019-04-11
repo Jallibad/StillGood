@@ -36,7 +36,7 @@ makeSubst = ((Subst . Map.fromList) .) . zip
 freshSubst :: Applicative f => f Type -> [Identifier] -> f Subst
 freshSubst = (uncurry fmap .) . (&&&) makeSubst . flip (replicateM . length)
 
--- |Removes collections of Identifiers from the substitution Map
+-- |Removes collections of Identifiers from the substitution lookup
 removeSubstitutions :: Foldable f => Subst -> f Identifier -> Subst
 removeSubstitutions = (Subst .) . foldr Map.delete . unsubst
 
