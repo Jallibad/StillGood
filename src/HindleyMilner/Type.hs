@@ -1,21 +1,23 @@
-module HindleyMilner.Type where
+module HindleyMilner.Type
+	( Type (..)
+	, TypeF (..)
+	, numArgs
+	, typeCata
+	, typeInt
+	, typeIO
+	) where
 
-import AST.Identifier
+import AST.Identifier (Identifier)
 import Data.Aeson
 import Data.Functor.Foldable
 import GHC.Generics (Generic)
 
-data TypeError
-	= UnificationFail Type Type
-	| InfiniteType Identifier Type
-	| TooManyArguments -- TODO Add context details
-	| UnboundVariable Identifier
-	deriving (Show)
-
+-- |Represents the type signature of a StillGood expression
 data Type
 	= Variable Identifier
 	| Constructor Identifier
-	| Arrow Type Type
+	| Arrow {input :: Type, output :: Type}
+	-- TODO Add application in the future to support type level functions
 	deriving (Generic, Show, Eq, Ord)
 instance ToJSON Type where
 	toEncoding = genericToEncoding defaultOptions
@@ -25,6 +27,7 @@ data TypeF a
 	= VariableF Identifier
 	| ConstructorF Identifier
 	| ArrowF a a
+	-- TODO After adding application to Type add here to support recursive application
 	deriving (Generic, Show, Eq, Ord, Functor)
 
 type instance Base Type = TypeF
@@ -41,9 +44,10 @@ typeCata v c a = cata $ \case
 	(t1 `ArrowF` t2) -> a t1 t2
 
 typeInt :: Type
-typeInt = Constructor $ Identifier "Int"
+typeInt = Constructor "Int"
+
+typeIO :: Type
+typeIO = Constructor "IO"
 
 numArgs :: Integral a => Type -> a
-numArgs (Variable _) = 0
-numArgs (Constructor _) = 0
-numArgs (Arrow _ a) = numArgs a + 1
+numArgs = typeCata (const 0) (const 0) (const succ)

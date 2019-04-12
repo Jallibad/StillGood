@@ -1,7 +1,13 @@
-module AST.Precedence where
+module AST.Precedence
+	( apply
+	, applyWithPrecedence
+	, isPrefix
+	, sya
+	, takeExpression
+	) where
 
+import AST.Expression
 import AST.ShuntingYard hiding (popToQueue)
-import AST.Types
 import Control.Arrow
 import Control.Monad (MonadPlus)
 import Data.Foldable

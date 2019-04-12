@@ -1,18 +1,15 @@
 module AST.Parsable
 	( Parsable
 	, Parser
-	, parseExpression
-	, parseTypes
+	-- , parseExpression
+	-- , parseTypes
 	, parser
 	) where
 
+import AST.Expression
 import AST.Identifier
 import AST.Precedence
-import AST.Types
-import HindleyMilner.Environment (empty)
-import HindleyMilner.Type (Type, TypeError)
-import HindleyMilner.Infer (getExplicitState)
-import HindleyMilner (inferExplicitType) -- file, not in same package
+import HindleyMilner.Type (Type)
 import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Foldable (foldr')
@@ -64,21 +61,21 @@ lambdaBodySeparator :: Parser ()
 lambdaBodySeparator = label "lambda separator \"->\"" $ void $ cts $ chunk "->"
 
 lambda :: Parser Expression
-lambda = combineArgsAndBody args body
+lambda = combine args body
 	where
 		args :: Parser [Identifier]
 		args = lambdaDeclarator *> some parser
-		
 		body :: Parser Expression
 		body = lambdaBodySeparator *> parser
-		
 		-- |Takes a list of variable names and an expression, then eta-expands a Lambda wrapper for each one
-		combineArgsAndBody :: Parser [Identifier] -> Parser Expression -> Parser Expression
-		combineArgsAndBody = liftA2 $ flip $ foldr' Lambda
+		combine :: Parser [Identifier] -> Parser Expression -> Parser Expression
+		combine = liftA2 $ flip $ foldr' Lambda
 
 builtIn :: Parser Expression
 builtIn = BuiltIn <$> cts (
 			some digitChar <|>
+			chunk "print" <|>
+			chunk "seq" <|>
 			chunk "+" <|>
 			chunk "add" <|>
 			chunk "-" <|>
@@ -100,18 +97,18 @@ instance Parsable Expression where
 -- examples:
 -- parseTypes (Lambda "x" (AST.Types.Variable "x"))
 -- parseTypes (Lambda "y" (Application (Lambda "x" (AST.Types.Variable "x")) (AST.Types.Variable "y")))
-parseTypes :: Expression -> Either TypeError Expression -- should return expressions with type built in
-parseTypes = getExplicitState . inferExplicitType HindleyMilner.Environment.empty
+-- parseTypes :: Expression -> Either TypeError Expression -- should return expressions with type built in
+-- parseTypes = getExplicitState . inferExplicitType HindleyMilner.Environment.empty
 
--- doesn't get 'forall' types yet
--- Given expression as a string, parse and infer types
-parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
-parseExpression src e = case ret1 of
-		Left _ -> ret1
-		Right e1 -> -- ret1 -- should run type inference here (using parseTypes, when finished)
-			case parseTypes e1 of
-				Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
-				Right e2 -> Right e2
-	where
-		ret1 = runParser parser src e
+-- -- doesn't get 'forall' types yet
+-- -- Given expression as a string, parse and infer types
+-- parseExpression :: String -> String -> Either (ParseErrorBundle String Void) Expression
+-- parseExpression src e = case ret1 of
+-- 		Left _ -> ret1
+-- 		Right e1 -> -- ret1 -- should run type inference here (using parseTypes, when finished)
+-- 			case parseTypes e1 of
+-- 				Left _ -> ret1 -- Left (ParseErrorBundle "error" (void ""))
+-- 				Right e2 -> Right e2
+-- 	where
+-- 		ret1 = runParser parser src e
 

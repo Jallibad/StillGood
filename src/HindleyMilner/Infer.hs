@@ -1,80 +1,56 @@
 module HindleyMilner.Infer
 	( ExpressionWithType (..)
 	, Infer
+	, bind
 	, fresh
+	, unify
 	, unwrapInfer
-	, instantiate
-	, runInfer
 	, getExplicitState
 	) where
 
-import AST.Identifier
-import AST.Types
-import Control.Arrow
+import AST.Expression (Expression)
+import AST.Identifier (Identifier)
+import Control.Applicative (liftA2)
 import Control.Monad.Except
-import Control.Monad.State
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import HindleyMilner.Environment
+import Control.Monad.State (State, evalState, get, put)
 import HindleyMilner.ExpressionWithType
-import HindleyMilner.Substitution
-import HindleyMilner.Scheme
-import HindleyMilner.Type
+import HindleyMilner.Substitution (Subst, occurs, single)
+import HindleyMilner.Type (Type (..))
+import HindleyMilner.TypeError (TypeError (..))
+import HindleyMilner.Utility (freshVars)
 
 newtype Unique = Unique {count :: Int}
 
 type Infer a = ExceptT TypeError (State Unique) a
 
-type TypeVarLookupFunction = Identifier -> Either TypeError Identifier
+-- |Attempts to create a substitution between the given identifier
+-- and type, failing if the identifier occurs in the type.
+bind :: Identifier -> Type -> Infer Subst
+bind a t = if occurs a t
+	then throwError $ InfiniteType a t
+	else pure $ single a t
+
+-- |Attempt to unify the given types. Fails if the given types are not alpha equivalent
+unify :: Type -> Type -> Infer Subst
+unify (l1 `Arrow` r1) (l2 `Arrow` r2) = liftA2 (<>) (unify l1 l2) (unify r1 r2)
+unify (Variable a) t = bind a t
+unify t (Variable a) = bind a t
+unify (Constructor a) (Constructor b) | a == b = pure mempty
+unify t1 t2 = throwError $ UnificationFail t1 t2
 
 initUnique :: Unique
 initUnique = Unique 0
 
-freshVars :: [Identifier]
-freshVars = Identifier <$> ([1..] >>= flip replicateM ['a'..'z'])
-
+-- |Takes an Infer and runs it, possibly throwing a TypeError
 unwrapInfer :: Infer a -> Either TypeError a
 unwrapInfer = flip evalState initUnique . runExceptT
-
-runInfer :: Infer (Subst, Type) -> Either TypeError Scheme
-runInfer m = join $ case unwrapInfer m of
-	Left err -> Left err
-	Right res -> Right $ closeOver res
-
--- runInfer' :: Infer (Subst, (a, Type)) -> Either TypeError (a, Scheme)
--- breakInfer :: Infer a -> Either TypeError a
--- breakInfer m = case thing m of
--- 	Left err -> Left err
-
 
 -- get Subst, Type, and an Expression using ExplicitType
 getExplicitState :: Infer (Subst, Type, Expression) -> Either TypeError Expression
 getExplicitState m = (\(_, _, e) -> e) <$> unwrapInfer m
 
-closeOver :: (Subst, Type) -> Either TypeError Scheme
-closeOver = normalize . generalize empty . uncurry apply
-
-makeAssocList :: Substitutable a => a -> TypeVarAssocList Identifier
-makeAssocList = flip zip freshVars . Set.toList . freeVars
-
--- makeMap :: Substitutable a => a -> Map Identifier Identifier
--- makeMap = Map.fromList . makeAssocList
-
-boundVarsAndLookup :: Substitutable a => a -> ([Identifier], TypeVarLookupFunction)
-boundVarsAndLookup = (fmap snd &&& flip lookupF) . makeAssocList
-
--- |Reset the bound type variables (maybe we've bound ['a','d','z']) to our list of fresh variables ['a','b','c']
--- example: @normalize (Forall [Identifier "b"] $ Variable $ Identifier "b")@
-normalize :: Scheme -> Either TypeError Scheme
-normalize (Forall _ body) = reconstructScheme body $ boundVarsAndLookup body
-
 fresh :: Infer Type
 fresh = do
 	s <- get
 	put s{count = count s + 1}
-	pure $ HindleyMilner.Type.Variable $ freshVars !! count s
-
--- f as = Map.fromList . zip as <$> mapM (const fresh) as
-
-instantiate :: Scheme -> Infer Type
-instantiate (Forall as t) = flip apply t . Map.fromList . zip as <$> mapM (const fresh) as
+	pure $ Variable $ freshVars !! count s
