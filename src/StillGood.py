@@ -69,34 +69,62 @@ def astToLLVM(jast):
     JSON jast: the AST in JSON form produced by the main Haskell routine
     Returns the new function name, and an ir module containing the LLVM code matching the input json encoded AST
     """
-    # json indexing
-    function = jast["function"]
-    body = jast["body"] 
-    funcBody = function["body"]
-    
-    # extract function information by keyword
-    funcArgs = function["argument"].split(",")
-    # TODO: hard-code function name to "main" temporarily so we can call StillGood methods directly during testing
-    funcName = "main" #funcBody["identifier"]
-    funcContents = body["contents"]
-    
-    # define llvm types
-    l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
-    l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))]) # match number of function arguments
-    
     # create a module for the output
     l_module = ir.Module(name=__file__)
-    # declare our new function
-    l_func = ir.Function(l_module, l_funcType, name=funcName)
 
+    curBlock = jast
+    parents = []
+    knownFuncs = ["print"]
+    funcs = []
+    # traverse the AST matching functions to their corresponding body contents
+    try:
+        while(True):
+            if (curBlock.get("function")):
+                parents.append(curBlock)
+                curBlock = curBlock["function"]
+                if (curBlock["tag"] != "Application"):
+                    if (curBlock["identifier"] in knownFuncs):
+                        funcs.append([curBlock["identifier"]])
+            else:
+                curBlock = parents.pop()
+                curBlock = curBlock["body"]
+                if (curBlock["tag"] != "Application"):
+                    funcs[-1].append(curBlock["contents"])
+    except:
+        print("finished parsing AST. discovered code:",funcs)
+    # define llvm types
+    l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
+    l_funcType = ir.FunctionType(l_int, [])
+    #l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))]) # match number of function arguments
+    # declare our new function
+    funcName = "main"
+    l_func = ir.Function(l_module, l_funcType, name=funcName)
+    
     # function entry point
     block = l_func.append_basic_block(name="entry")
     # create a builder for constructing the function code
     builder = ir.IRBuilder(block)
-    # return value
-    contentType = getTypeFromStr(funcContents)
-    if (contentType == "int"):
-        builder.ret(l_int(funcContents))
+    
+    # now add the code from our ast
+    voidptr_ty = ir.IntType(8).as_pointer()
+    fmt = "%i \n\0"
+    # Source: https://blog.usejournal.com/writing-your-own-programming-language-and-compiler-with-python-a468970ae6df
+    c_fmt = ir.Constant(ir.ArrayType(ir.IntType(8), len(fmt)), bytearray(fmt.encode("utf8")))
+    global_fmt = ir.GlobalVariable(l_module, c_fmt.type, name="fstr")
+    global_fmt.linkage = 'internal'
+    global_fmt.global_constant = True
+    global_fmt.initializer = c_fmt
+    fmt_arg = builder.bitcast(global_fmt, voidptr_ty)
+    printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
+    printf = ir.Function(l_module, printf_ty, name="printf")
+    instr = 0
+    for f in funcs:
+        if (f[0] == "print"):
+            #builder.call(printf,[fmt_arg,ir.Constant(ir.IntType(8), int(f[1]))])
+            builder._insert("%{0} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fstr, i32 0, i32 0), i32 {1})".format(instr,f[1]))
+            instr += 1
+    # return 0
+    builder.ret(l_int(0))
     
     # Print the module IR
     return funcName, l_module
