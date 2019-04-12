@@ -49,18 +49,18 @@ def naiveAstToLLVM(jast):
     JSON jast: the AST in JSON form produced by the main Haskell routine
     Returns a string containing the LLVM code matching the input json encoded AST
     """
-    #json indexing
+    # json indexing
     function = jast["function"]
     body = jast["body"] 
     funcBody = function["body"]
     
-    #extract function information by keyword
+    # extract function information by keyword
     funcArg = function["argument"]
     funcName = funcBody["identifier"]
     funcContents = body["contents"]
     print("full jast: {0}\nargument: {1}, name: {2}, contents: {3}".format(jast,funcArg,funcName,funcContents))
     
-    #build up the llvm code
+    # build up the llvm code
     return "{0} {1}({2}) {{\nreturn {3};\n}}".format("int",funcName,funcArg,funcContents)
 
 def astToLLVM(jast):
@@ -69,35 +69,68 @@ def astToLLVM(jast):
     JSON jast: the AST in JSON form produced by the main Haskell routine
     Returns the new function name, and an ir module containing the LLVM code matching the input json encoded AST
     """
-    #json indexing
-    function = jast["function"]
-    body = jast["body"] 
-    funcBody = function["body"]
-    
-    #extract function information by keyword
-    funcArgs = function["argument"].split(",")
-    funcName = funcBody["identifier"]
-    funcContents = body["contents"]
-    
-    # define llvm types
-    l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
-    l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))]) # match number of function arguments
-    
     # create a module for the output
     l_module = ir.Module(name=__file__)
-    # declare our new function
-    l_func = ir.Function(l_module, l_funcType, name=funcName)
 
+    curBlock = jast
+    parents = []
+    knownFuncs = ["print"]
+    funcs = []
+    # traverse the AST matching functions to their corresponding body contents
+    try:
+        while(True):
+            if (curBlock.get("function")):
+                parents.append(curBlock)
+                curBlock = curBlock["function"]
+                if (curBlock["tag"] != "Application"):
+                    if (curBlock["identifier"] in knownFuncs):
+                        funcs.append([curBlock["identifier"]])
+            else:
+                curBlock = parents.pop()
+                curBlock = curBlock["body"]
+                if (curBlock["tag"] != "Application"):
+                    funcs[-1].append(curBlock["contents"])
+    except:
+        print("finished parsing AST. discovered code:",funcs)
+    # define llvm types
+    l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
+    l_funcType = ir.FunctionType(l_int, [])
+    #l_funcType = ir.FunctionType(l_int, [*([l_int]*len(funcArgs))]) # match number of function arguments
+    # declare our new function
+    funcName = "main"
+    l_func = ir.Function(l_module, l_funcType, name=funcName)
+    
     # function entry point
     block = l_func.append_basic_block(name="entry")
     # create a builder for constructing the function code
     builder = ir.IRBuilder(block)
-    # return value
-    contentType = getTypeFromStr(funcContents)
-    if (contentType == "int"):
-        builder.ret(l_int(funcContents))
     
-    # Print the module IR
+    #add printing support if our code uses it anywhere
+    if ("print" == f[0] for f in funcs):
+        # Source: https://blog.usejournal.com/writing-your-own-programming-language-and-compiler-with-python-a468970ae6df
+        voidptr_ty = ir.IntType(8).as_pointer()
+        fmt = "%i \n\0"
+        c_fmt = ir.Constant(ir.ArrayType(ir.IntType(8), len(fmt)), bytearray(fmt.encode("utf8")))
+        global_fmt = ir.GlobalVariable(l_module, c_fmt.type, name="fstr")
+        global_fmt.linkage = 'internal'
+        global_fmt.global_constant = True
+        global_fmt.initializer = c_fmt
+        fmt_arg = builder.bitcast(global_fmt, voidptr_ty)
+        printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
+        printf = ir.Function(l_module, printf_ty, name="printf")
+        
+    # now add the code from our ast
+    for f in funcs:
+        if (f[0] == "print"):
+            if (getTypeFromStr(f[1]) == "int"):
+                builder.call(printf,[fmt_arg,ir.Constant(ir.IntType(32), int(f[1]))])
+            else:
+                #TODO: printing non-int primitives
+                pass
+
+    # return 0
+    builder.ret(l_int(0))
+    
     return funcName, l_module
 
 def create_execution_engine():
@@ -137,8 +170,8 @@ def compile_module(engine, mod):
     return compile_ir(engine,str(mod))
 
 def main():
-    if (len(sys.argv) != 2):
-        exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile")
+    if (not len(sys.argv) in [2,3]):
+        exitError("1 command line argument expected, {0} received. Usage: python StillGood.py inputCodeFile|inputJSONFile [outputFile]")
     # if we specified a StillGood file, run it through Haskell to get the AST. Otherwise, read the AST directly from the file
     ast = getASTFromHaskell() if sys.argv[1][-3:] == ".sg" else getASTFromFile()
     jast = json.loads(ast)
@@ -148,13 +181,46 @@ def main():
     engine = create_execution_engine()
     mod = compile_module(engine, llvm_ir)
     
-    # Look up the function pointer (a Python int)
-    func_ptr = engine.get_function_address(funcName)
-    
-    # Run the function via ctypes and test the output
-    cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
-    res = cfunc(3)
-    print("{0}(...) = {1}".format(funcName,res))
+    if (len(sys.argv) == 3):
+        # if the user specified an output file name, write the generated llvm code to that file
+        # manually add target to .ll output so we can compile it to a proper executable
+        modOut = str(mod)
+        tripleLocQ1 = modOut.find("target triple = ")+16
+        tripleLocQ2 = modOut.find('"',tripleLocQ1+1)
+        # extract our platform architecture from clang's version info
+        print("Extracting platform architecture from clang")
+        try:
+            properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
+        except:
+            exitError("Unable to extract platform architecture from clang. Please make sure you have clang installed properly")
+        modOut = modOut[:tripleLocQ1+1] + properTarget + modOut[tripleLocQ2:]
+        print("Writing llvm code to " + sys.argv[2]+".ll")
+        with open(sys.argv[2]+".ll","w") as f:
+            f.write(modOut)
+        
+        # now compile the .ll to a .obj with llc
+        print("Compiling llvm code to " + sys.argv[2] + ".obj")
+        try:
+            subprocess.run("llc -filetype=obj " + sys.argv[2] + ".ll")
+        except:
+            exitError("Unable to compile llvm code with llc. Please make sure you have llvm installed properly")
+        # finally, compile the .obj to an executable with clang
+        print("Compiling obj file to " + sys.argv[2] + ".exe")
+        try:
+            subprocess.run("clang " + sys.argv[2] + ".obj -o " + sys.argv[2] + ".exe")
+        except:
+            exitError("Unable to create executable file with clang. Please make sure you have clang installed properly")
+        print("Compilation complete! Final executable written to " + sys.argv[2] + ".exe")
+    else:
+        # no output file was specified, so run the generated code directly in Python via ctypes instead
+        # Look up the function pointer (a Python int) 
+        func_ptr = engine.get_function_address(funcName)
+        
+        # Run the function and test the output
+        cfunc = CFUNCTYPE(c_int32, c_int32)(func_ptr)
+        testArg = 8
+        res = cfunc(testArg)
+        print("{0}({1}) = {2}".format(funcName,testArg, res))
 
 if __name__ == "__main__":
     main()

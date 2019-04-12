@@ -74,6 +74,7 @@ lambda = combine args body
 builtIn :: Parser Expression
 builtIn = BuiltIn <$> cts (
 			some digitChar <|>
+			chunk "print" <|>
 			chunk "seq" <|>
 			chunk "+" <|>
 			chunk "add" <|>

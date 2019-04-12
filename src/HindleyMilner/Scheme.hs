@@ -10,13 +10,13 @@ module HindleyMilner.Scheme
 	, typeVars
 	) where
 
-import AST.Identifier
+import AST.Identifier (Identifier)
 import Control.Arrow ((&&&), (***))
 import Control.Lens
 import Data.Set (Set)
 import qualified Data.Set as Set
 import HindleyMilner.Substitution
-import HindleyMilner.Type
+import HindleyMilner.Type (Type)
 
 data Scheme = Forall {_typeVars :: Set Identifier, _body :: Type} deriving (Show)
 makeLenses ''Scheme

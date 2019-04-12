@@ -11,20 +11,23 @@ import Data.Functor.Foldable (cata)
 import HindleyMilner.Environment (Environment, (!?))
 import HindleyMilner.Infer
 import HindleyMilner.Scheme (instantiate)
-import HindleyMilner.Substitution (Subst, apply')
-import HindleyMilner.Type (Type (..), typeInt)
+import HindleyMilner.Substitution (Subst, apply', single)
+import HindleyMilner.Type (Type (..), typeInt, typeIO)
 import HindleyMilner.TypeError (TypeError (..))
 
 inferType :: Environment -> Expression -> Infer (Subst, ExpressionWithType)
 inferType env = cata $ \case
 	-- If we see a builtin add a hardcoded type to it
 	-- TODO Support type inference on other builtins (needed for operator parsing)
+	(BuiltInF "print") -> pure (mempty, ExpressionWithType (BuiltInF "print") $ Arrow typeInt typeIO)
+	(BuiltInF "seq") -> pure (mempty, ExpressionWithType (BuiltInF "seq") $ Arrow typeIO $ Arrow typeIO typeIO)
 	(BuiltInF x) -> pure (mempty, ExpressionWithType (BuiltInF x) typeInt)
 
 	-- If we see a variable look it up from our environment
 	-- (VariableF x) -> second (ExpressionWithType $ VariableF x) <$> lookupEnv env x
 	(VariableF x) -> maybe
 		-- If the variable isn't found throw an error
+		-- TODO Add unbound variable with fresh type variable to substitution instead of throwing error
 		(throwError $ UnboundVariable x)
 		-- If the variable is found put a null substitution in and 
 		((mempty,) <.> ExpressionWithType (VariableF x) <.> flip instantiate fresh)
@@ -37,8 +40,11 @@ inferType env = cata $ \case
 	-- how Environment works to allow demanding for future binding of free variables?
 	(LambdaF argument body) -> do
 		(s, body') <- body
-		outerType <- flip Arrow (annotation body') <$> fresh
-		pure (s, ExpressionWithType (LambdaF argument body') outerType)
+		argType <- fresh
+		let
+			s' = s <> single argument argType
+			typedExp = ExpressionWithType (LambdaF argument body') $ Arrow argType $ annotation body'
+		pure (s', typedExp)
 
 	-- If we see a function application infer the types, then unify the function's
 	-- argument type and the body type, and infer the function's return type

@@ -14,5 +14,7 @@ Usage:
 -Navigate to the project's root directory
 -Ensure that you have checked out and updated all submodules by running "git submodule update --recursive --remote"  
 -Run "stack build" to build the Haskell portion of the codebase  
--Run stack exec StillGood filename where 'filename' is your test program. Alternatively, you can run stack ghci to work with GHC's interactive environment.  
--Run "python StillGood.py inputCodeFile|inputJSONFile" to compile the specified code file or pre-compiled AST JSON file to LLVM
+-Run "stack exec StillGood filename" where 'filename' is your test program. Alternatively, you can run stack ghci to work with GHC's interactive environment.  
+-Run "python StillGood.py inputCodeFile|inputJSONFile [outputFile]" to compile the specified code file or pre-compiled AST JSON file to the specified output file, or to run the compiled code in Python if no output file was provided  
+  
+For experimenting with llvm ir, check out http://ellcc.org/demo/index.cgi
