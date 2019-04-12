@@ -7,7 +7,7 @@ Requirements:
 -Haskell (https://docs.haskellstack.org/en/stable/README/)  
   
 Install Instructions:  
-run "pip install llvmlite"  
+-run "pip install llvmlite"  
 -run "git clone git://github.com/Jallibad/StillGood.git"  
   
 Usage:  
