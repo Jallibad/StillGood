@@ -156,15 +156,29 @@ def main():
         tripleLocQ1 = modOut.find("target triple = ")+16
         tripleLocQ2 = modOut.find('"',tripleLocQ1+1)
         # extract our platform architecture from clang's version info
-        properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
+        print("Extracting platform architecture from clang")
+        try:
+            properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
+        except:
+            exitError("Unable to extract platform architecture from clang. Please make sure you have clang installed properly")
         modOut = modOut[:tripleLocQ1+1] + properTarget + modOut[tripleLocQ2:]
+        print("Writing llvm code to " + sys.argv[2]+".ll")
         with open(sys.argv[2]+".ll","w") as f:
             f.write(modOut)
         
         # now compile the .ll to a .obj with llc
-        subprocess.run("llc -filetype=obj " + sys.argv[2] + ".ll")
+        print("Compiling llvm code to " + sys.argv[2] + ".obj")
+        try:
+            subprocess.run("llc -filetype=obj " + sys.argv[2] + ".ll")
+        except:
+            exitError("Unable to compile llvm code with llc. Please make sure you have llvm installed properly")
         # finally, compile the .obj to an executable with clang
-        subprocess.run("clang " + sys.argv[2] + ".obj -o " + sys.argv[2] + ".exe")
+        print("Compiling obj file to " + sys.argv[2] + ".exe")
+        try:
+            subprocess.run("clang " + sys.argv[2] + ".obj -o " + sys.argv[2] + ".exe")
+        except:
+            exitError("Unable to create executable file with clang. Please make sure you have clang installed properly")
+        print("Compilation complete! Final executable written to " + sys.argv[2] + ".exe")
     else:
         # no output file was specified, so run the generated code directly in Python via ctypes instead
         # Look up the function pointer (a Python int) 
