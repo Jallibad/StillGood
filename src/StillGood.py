@@ -77,19 +77,50 @@ def astToLLVM(jast):
     knownFuncs = ["print"]
     funcs = []
     # traverse the AST matching functions to their corresponding body contents
+    """
+    expression:
+    Will contain a function.
+    If it is built in, will have the tag "BuiltIn" and its "contents"
+    Otherwise, will contain 3 fields: "function", "tag", "body"
+    
+    function:
+    Will contain 2 fields: "annotation", "expression"
+    
+    body:
+    Will contain 2 fields: "annotation", "expression"
+    
+    "Arrow" tag:
+    Defines an input and output
+    
+    "Constructor" tag:
+    Defines a type
+    
+    "Application" tag:
+    Defines a function
+    
+    "BuiltIn" tag:
+    Defines a function literal
+    
+    Perhaps the best way to go is look at the tag first, then decide what to do next
+    
+    """
     try:
-        while(True):
-            if (curBlock.get("function")):
-                parents.append(curBlock)
-                curBlock = curBlock["function"]
-                if (curBlock["tag"] != "Application"):
-                    if (curBlock["identifier"] in knownFuncs):
-                        funcs.append([curBlock["identifier"]])
-            else:
-                curBlock = parents.pop()
-                curBlock = curBlock["body"]
-                if (curBlock["tag"] != "Application"):
-                    funcs[-1].append(curBlock["contents"])
+        if (curBlock.get("Right")):
+            curBlock = curBlock["Right"]
+            while(True):
+                if (curBlock.get("function")):
+                    parents.append(curBlock)
+                    curBlock = curBlock["function"]
+                    if (curBlock["tag"] != "Application"):
+                        if (curBlock["identifier"] in knownFuncs):
+                            funcs.append([curBlock["identifier"]])
+                else:
+                    curBlock = parents.pop()
+                    curBlock = curBlock["body"]
+                    if (curBlock["tag"] != "Application"):
+                        funcs[-1].append(curBlock["contents"])
+        else: #error occurred
+            pass
     except:
         print("finished parsing AST. discovered code:",funcs)
     # define llvm types
