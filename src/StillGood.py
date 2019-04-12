@@ -105,28 +105,32 @@ def astToLLVM(jast):
     # create a builder for constructing the function code
     builder = ir.IRBuilder(block)
     
+    #add printing support if our code uses it anywhere
+    if ("print" == f[0] for f in funcs):
+        # Source: https://blog.usejournal.com/writing-your-own-programming-language-and-compiler-with-python-a468970ae6df
+        voidptr_ty = ir.IntType(8).as_pointer()
+        fmt = "%i \n\0"
+        c_fmt = ir.Constant(ir.ArrayType(ir.IntType(8), len(fmt)), bytearray(fmt.encode("utf8")))
+        global_fmt = ir.GlobalVariable(l_module, c_fmt.type, name="fstr")
+        global_fmt.linkage = 'internal'
+        global_fmt.global_constant = True
+        global_fmt.initializer = c_fmt
+        fmt_arg = builder.bitcast(global_fmt, voidptr_ty)
+        printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
+        printf = ir.Function(l_module, printf_ty, name="printf")
+        
     # now add the code from our ast
-    voidptr_ty = ir.IntType(8).as_pointer()
-    fmt = "%i \n\0"
-    # Source: https://blog.usejournal.com/writing-your-own-programming-language-and-compiler-with-python-a468970ae6df
-    c_fmt = ir.Constant(ir.ArrayType(ir.IntType(8), len(fmt)), bytearray(fmt.encode("utf8")))
-    global_fmt = ir.GlobalVariable(l_module, c_fmt.type, name="fstr")
-    global_fmt.linkage = 'internal'
-    global_fmt.global_constant = True
-    global_fmt.initializer = c_fmt
-    fmt_arg = builder.bitcast(global_fmt, voidptr_ty)
-    printf_ty = ir.FunctionType(ir.IntType(32), [voidptr_ty], var_arg=True)
-    printf = ir.Function(l_module, printf_ty, name="printf")
-    instr = 0
     for f in funcs:
         if (f[0] == "print"):
-            #builder.call(printf,[fmt_arg,ir.Constant(ir.IntType(8), int(f[1]))])
-            builder._insert("%{0} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @fstr, i32 0, i32 0), i32 {1})".format(instr,f[1]))
-            instr += 1
+            if (getTypeFromStr(f[1]) == "int"):
+                builder.call(printf,[fmt_arg,ir.Constant(ir.IntType(32), int(f[1]))])
+            else:
+                #TODO: printing non-int primitives
+                pass
+
     # return 0
     builder.ret(l_int(0))
     
-    # Print the module IR
     return funcName, l_module
 
 def create_execution_engine():
