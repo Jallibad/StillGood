@@ -106,18 +106,18 @@ def astToLLVM(jast):
     """
     try:
         if (curBlock.get("Right")):
-            curBlock = curBlock["Right"]
+            curBlock = curBlock["Right"]["expression"]
             while(True):
                 if (curBlock.get("function")):
                     parents.append(curBlock)
-                    curBlock = curBlock["function"]
-                    if (curBlock["tag"] != "Application"):
-                        if (curBlock["identifier"] in knownFuncs):
-                            funcs.append([curBlock["identifier"]])
+                    curBlock = curBlock["function"]["expression"]
+                    if (curBlock["tag"] == "BuiltIn"):
+                        if (curBlock["contents"] in knownFuncs):
+                            funcs.append([curBlock["contents"]])
                 else:
                     curBlock = parents.pop()
-                    curBlock = curBlock["body"]
-                    if (curBlock["tag"] != "Application"):
+                    curBlock = curBlock["body"]["expression"]
+                    if (curBlock["tag"] == "BuiltIn"):
                         funcs[-1].append(curBlock["contents"])
         else: #error occurred
             pass
