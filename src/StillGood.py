@@ -18,11 +18,16 @@ def exitError(s):
     sys.exit(1)
 
 def getASTFromHaskell():
-     """
-     Run the main Haskell routine on the input code file name in a subprocess, yielding the resulting AST
-     Returns the bytestring representation of a json encoded Abstract Syntax Tree
-     """
-     return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
+    """
+    Run the main Haskell routine on the input code file name in a subprocess, yielding the resulting AST
+    Returns the bytestring representation of a json encoded Abstract Syntax Tree
+    """
+    print("rebuilding Haskell code")
+    try:
+        subprocess.run("stack build")
+    except:
+        exitError("Unable to stack build. Please make sure you have Haskell installed properly")
+    return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
 
 def getASTFromFile():
     """
@@ -224,6 +229,7 @@ def main():
             properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
         except:
             exitError("Unable to extract platform architecture from clang. Please make sure you have clang installed properly")
+        print("architecture identified as " + properTarget + "; correcting llvm target")
         modOut = modOut[:tripleLocQ1+1] + properTarget + modOut[tripleLocQ2:]
         print("Writing llvm code to " + sys.argv[2]+".ll")
         with open(sys.argv[2]+".ll","w") as f:
