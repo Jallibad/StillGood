@@ -18,11 +18,16 @@ def exitError(s):
     sys.exit(1)
 
 def getASTFromHaskell():
-     """
-     Run the main Haskell routine on the input code file name in a subprocess, yielding the resulting AST
-     Returns the bytestring representation of a json encoded Abstract Syntax Tree
-     """
-     return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
+    """
+    Run the main Haskell routine on the input code file name in a subprocess, yielding the resulting AST
+    Returns the bytestring representation of a json encoded Abstract Syntax Tree
+    """
+    print("rebuilding Haskell code")
+    try:
+        subprocess.run("stack build")
+    except:
+        exitError("Unable to stack build. Please make sure you have Haskell installed properly")
+    return subprocess.check_output("stack exec -- StillGood {0}".format(sys.argv[1]), shell=True)
 
 def getASTFromFile():
     """
@@ -77,19 +82,50 @@ def astToLLVM(jast):
     knownFuncs = ["print"]
     funcs = []
     # traverse the AST matching functions to their corresponding body contents
+    """
+    expression:
+    Will contain a function.
+    If it is built in, will have the tag "BuiltIn" and its "contents"
+    Otherwise, will contain 3 fields: "function", "tag", "body"
+    
+    function:
+    Will contain 2 fields: "annotation", "expression"
+    
+    body:
+    Will contain 2 fields: "annotation", "expression"
+    
+    "Arrow" tag:
+    Defines an input and output
+    
+    "Constructor" tag:
+    Defines a type
+    
+    "Application" tag:
+    Defines a function
+    
+    "BuiltIn" tag:
+    Defines a function literal
+    
+    Perhaps the best way to go is look at the tag first, then decide what to do next
+    
+    """
     try:
-        while(True):
-            if (curBlock.get("function")):
-                parents.append(curBlock)
-                curBlock = curBlock["function"]
-                if (curBlock["tag"] != "Application"):
-                    if (curBlock["identifier"] in knownFuncs):
-                        funcs.append([curBlock["identifier"]])
-            else:
-                curBlock = parents.pop()
-                curBlock = curBlock["body"]
-                if (curBlock["tag"] != "Application"):
-                    funcs[-1].append(curBlock["contents"])
+        if (curBlock.get("Right")):
+            curBlock = curBlock["Right"]["expression"]
+            while(True):
+                if (curBlock.get("function")):
+                    parents.append(curBlock)
+                    curBlock = curBlock["function"]["expression"]
+                    if (curBlock["tag"] == "BuiltIn"):
+                        if (curBlock["contents"] in knownFuncs):
+                            funcs.append([curBlock["contents"]])
+                else:
+                    curBlock = parents.pop()
+                    curBlock = curBlock["body"]["expression"]
+                    if (curBlock["tag"] == "BuiltIn"):
+                        funcs[-1].append(curBlock["contents"])
+        else: #error occurred
+            pass
     except:
         print("finished parsing AST. discovered code:",funcs)
     # define llvm types
@@ -193,6 +229,7 @@ def main():
             properTarget = subprocess.check_output("clang --version".format(sys.argv[1]), shell=True).decode("utf-8").split("\n")[1][8:]
         except:
             exitError("Unable to extract platform architecture from clang. Please make sure you have clang installed properly")
+        print("architecture identified as " + properTarget + "; correcting llvm target")
         modOut = modOut[:tripleLocQ1+1] + properTarget + modOut[tripleLocQ2:]
         print("Writing llvm code to " + sys.argv[2]+".ll")
         with open(sys.argv[2]+".ll","w") as f:
