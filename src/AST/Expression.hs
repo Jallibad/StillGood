@@ -23,7 +23,7 @@ data Expression
 	-- |A string built into the compiler, contains language primitives.
 	-- Should probably be broken into different types
 	| BuiltIn String
-	deriving (Generic, Show)
+	deriving (Generic, Show, Eq)
 	
 instance ToJSON Expression where
 	toEncoding = genericToEncoding defaultOptions
