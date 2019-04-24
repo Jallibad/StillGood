@@ -51,3 +51,9 @@ typeIO = Constructor "IO"
 
 numArgs :: Integral a => Type -> a
 numArgs = typeCata (const 0) (const 0) (const succ)
+
+data LinearType b
+	= LinearVariable Identifier
+	| LinearConstructor Identifier
+	| LinearArrow b b
+	deriving (Generic, Show, Eq, Ord, Functor)
