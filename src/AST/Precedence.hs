@@ -28,18 +28,16 @@ instance Ord Precedence where
 	compare (Infix n1 _) (Infix n2 _) = compare n1 n2
 
 rpnApply :: Expression -> [Expression] -> Expression
-rpnApply op exprs =
-	case Data.Foldable.length exprs of
-		0 -> undefined -- error
-		1 -> Application op $ head exprs -- one arg left
-		_ -> Application (rpnApply op $ tail exprs) $ head exprs
+rpnApply op [] = op
+rpnApply op (x:xs) = Application (rpnApply op xs) x
 
 -- apply foldingFunction to list of expressions using foldl starting with empty list
 rpn :: ApplicationRule
 rpn = head . foldl foldingFunction []
 	where
-		foldingFunction xs (ExplicitType t f@(BuiltIn _)) =	if argNum > 0 then rpnApply f (Prelude.take argNum xs) : Prelude.drop argNum xs else f : xs
-			where argNum = numArgs t
+		foldingFunction xs (ExplicitType (numArgs -> argNum) f@(BuiltIn _))
+			| argNum > 0	= let (a,b) = Prelude.splitAt argNum xs in rpnApply f a : b
+			| otherwise		= f : xs
 		foldingFunction _ _ = undefined
 
 -- applies Application to two expressions?
