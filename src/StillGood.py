@@ -81,6 +81,7 @@ def astToLLVM(jast):
     parents = []
     knownFuncs = ["print"]
     funcs = []
+    annotations = []
     # traverse the AST matching functions to their corresponding body contents
     """
     expression:
@@ -116,6 +117,11 @@ def astToLLVM(jast):
                 if (curBlock.get("function")):
                     parents.append(curBlock)
                     curBlock = curBlock["function"]["expression"]
+                    annot = curBlock["annotation"]
+                    if (annot["tag"] == "Arrow"): #grab arrow types
+                        arrow_in = annot["input"]["contents"]
+                        arrow_out = annot["output"]["contents"]
+                        annotations.append((arrow_in,arrow_out))
                     if (curBlock["tag"] == "BuiltIn"):
                         if (curBlock["contents"] in knownFuncs):
                             funcs.append([curBlock["contents"]])
