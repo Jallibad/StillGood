@@ -19,6 +19,13 @@ StillGood is a new programming language, designed to capitalize on the strengths
   
 For experimenting with llvm ir, check out http://ellcc.org/demo/index.cgi  
   
+## Contributing  
+  
+StillGood is still in its infancy, and is depending on the community's help to grow into a fully fledged programming language.  
+We encourage you to [submit any issues you encounter](https://github.com/Jallibad/StillGood/issues/new) and contribute to StillGood!  
+To contribute, [fork the repo](https://github.com/Jallibad/StillGood/fork), comment on an issue, and submit a pull request to the [master](https://github.com/Jallibad/StillGood/tree/master) branch.  
+For help getting started with contributing, check the usage steps outlined above, or reach out to us with your questions or concerns.  
+  
 ## Code of Conduct  
   
 In the interest of fostering an open and welcoming environment, StillGood pledges to be an inclusive and harassment-free experience for  all, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, educational background, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.  
