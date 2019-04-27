@@ -42,10 +42,19 @@ or to run the compiled code in Python if no output file was provided/
 
 This will generate an executable which can be run from the command line.
 
-## Syntax
+## Programming Style
 
-(Rename this section) Show operators, formatting, line endings (or lack thereof)
+StillGood uses a Haskell-style syntax and function application system.
+Use parenthesis to ensure proper order of operations. Functions can be either
+prefix or infix. Literals do not have to be defined, their types will be infered.
 
 ## Sample Program
 
-Todo
+sg code:
+>(print 1) ; (print 2)
+
+expected execution output:
+```
+>1
+>2
+```
