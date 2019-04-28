@@ -129,7 +129,8 @@ def astToLLVM(jast):
                             arrow_out = annot["output"]["contents"]
                         else:
                             pass #TODO figure out what goes here
-                        annotations.append((arrow_in,arrow_out))
+                        if (arrow_in != "NONE" and arrow_out != "NONE"):
+                            annotations.append((arrow_in,arrow_out))
                         
                     if (curBlock["tag"] == "BuiltIn"):
                         if (curBlock["contents"] in knownFuncs):
@@ -143,7 +144,8 @@ def astToLLVM(jast):
             pass
     except:
         print("finished parsing AST. discovered code:",funcs)
-    print(annotations)
+    #now each function matched with it's input/output type. Use for more complex compilation
+    func_and_types = list(zip(funcs,annotations)) 
     # define llvm types
     l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
     l_funcType = ir.FunctionType(l_int, [])
