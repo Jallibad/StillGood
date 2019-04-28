@@ -79,7 +79,7 @@ def astToLLVM(jast):
 
     curBlock = jast
     parents = []
-    knownFuncs = ["print"]
+    knownFuncs = ["print","seq"]
     funcs = []
     annotations = []
     # traverse the AST matching functions to their corresponding body contents
@@ -116,12 +116,21 @@ def astToLLVM(jast):
             while(True):
                 if (curBlock.get("function")):
                     parents.append(curBlock)
+                    annot = curBlock["function"]["annotation"]
                     curBlock = curBlock["function"]["expression"]
-                    annot = curBlock["annotation"]
                     if (annot["tag"] == "Arrow"): #grab arrow types
-                        arrow_in = annot["input"]["contents"]
-                        arrow_out = annot["output"]["contents"]
+                        arrow_in = "NONE"
+                        arrow_out = "NONE"
+                        if (annot["input"]["tag"] == "Constructor"):
+                            arrow_in = annot["input"]["contents"]
+                        else:
+                            pass #TODO figure out what goes here
+                        if (annot["output"]["tag"] == "Constructor"):
+                            arrow_out = annot["output"]["contents"]
+                        else:
+                            pass #TODO figure out what goes here
                         annotations.append((arrow_in,arrow_out))
+                        
                     if (curBlock["tag"] == "BuiltIn"):
                         if (curBlock["contents"] in knownFuncs):
                             funcs.append([curBlock["contents"]])
@@ -134,6 +143,7 @@ def astToLLVM(jast):
             pass
     except:
         print("finished parsing AST. discovered code:",funcs)
+    print(annotations)
     # define llvm types
     l_int = ir.IntType(32)  # TODO: replace hard-coded int with a type extracted from the AST, once type info is merged in
     l_funcType = ir.FunctionType(l_int, [])
