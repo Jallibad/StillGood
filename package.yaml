@@ -32,6 +32,10 @@ dependencies:
 - recursion-schemes
 - lens
 - hspec
+- parser-combinators
+- transformers
+- monad-loops
+- stm
 
 default-extensions:
 - TupleSections

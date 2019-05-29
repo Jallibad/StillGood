@@ -1,13 +1,18 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module AST.Expression
 	( Expression (..)
 	, ExpressionF (..)
+	, replaceVar
 	) where
 
 import AST.Identifier
 import Data.Aeson
-import Data.Functor.Foldable
-import GHC.Generics (Generic)
-import HindleyMilner.Type (Type)
+import Data.Functor.Foldable (embed, para)
+import Data.Functor.Foldable.TH (makeBaseFunctor)
+import GHC.Generics (Generic, Rep)
+import HindleyMilner.Type (Type (..))
 
 -- |A node in the syntax tree, potentially containing subexpressions.
 data Expression
@@ -24,32 +29,25 @@ data Expression
 	-- Should probably be broken into different types
 	| BuiltIn String
 	deriving (Generic, Show, Eq)
+
+makeBaseFunctor ''Expression
 	
 instance ToJSON Expression where
 	toEncoding = genericToEncoding defaultOptions
 instance FromJSON Expression
 
-data ExpressionF a
-	= VariableF {identifier :: Identifier}
-	| LambdaF {argument :: Identifier, body :: a}
-	| ApplicationF {function :: a, body :: a}
-	-- |Should be deprecated in the near future
-	| ExplicitTypeF {annotation' :: Type, expression :: a}
-	| BuiltInF String
-	deriving (Generic, Show, Functor, Foldable, Traversable)
-
+deriving instance Generic (ExpressionF a)
+deriving instance Show a => Show (ExpressionF a)
 instance ToJSON a => ToJSON (ExpressionF a) where
 	toJSON (VariableF i) = object ["tag" .= String "Variable", "identifier" .= i]
 	toJSON (LambdaF a b) = object ["tag" .= String "Lambda", "argument" .= a, "body" .= b]
 	toJSON (ApplicationF f b) = object ["tag" .= String "Application", "function" .= f, "body" .= b]
 	toJSON (ExplicitTypeF _ _) = undefined
 	toJSON (BuiltInF i) = object ["tag" .= String "BuiltIn", "contents" .= i]
-instance FromJSON a => FromJSON (ExpressionF a)
+instance (GFromJSON Zero (Rep (ExpressionF a)), FromJSON a) => FromJSON (ExpressionF a)
 
-type instance Base Expression = ExpressionF
-instance Recursive Expression where
-	project (Variable i) = VariableF i
-	project (Lambda a b) = LambdaF a b
-	project (Application f b) = ApplicationF f b
-	project (ExplicitType a e) = ExplicitTypeF a e
-	project (BuiltIn x) = BuiltInF x
+replaceVar :: Identifier -> Expression -> Expression -> Expression
+replaceVar var val = para $ \case
+	(VariableF var') | var == var' -> val
+	(LambdaF newVar (orig, replaced)) -> Lambda newVar $ if var == newVar then orig else replaced
+	x -> embed $ fmap fst x

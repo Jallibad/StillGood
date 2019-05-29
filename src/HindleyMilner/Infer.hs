@@ -1,6 +1,6 @@
 module HindleyMilner.Infer
-	( ExpressionWithType (..)
-	, Infer
+	( Infer
+	, TypedExp (..)
 	, bind
 	, fresh
 	, unify
@@ -13,9 +13,9 @@ import AST.Identifier (Identifier)
 import Control.Applicative (liftA2)
 import Control.Monad.Except
 import Control.Monad.State (State, evalState, get, put)
-import HindleyMilner.ExpressionWithType
 import HindleyMilner.Substitution (Subst, occurs, single)
 import HindleyMilner.Type (Type (..))
+import HindleyMilner.TypedExp
 import HindleyMilner.TypeError (TypeError (..))
 import HindleyMilner.Utility (freshVars)
 

@@ -2,6 +2,7 @@ module AST.Precedence
 	( apply
 	, applyWithPrecedence
 	, isPrefix
+	, quickAndDirty
 	, sya
 	, takeExpression
 	) where
@@ -15,6 +16,9 @@ import Data.Function
 import Data.Sequence
 import HindleyMilner.Type (numArgs)
 import Data.Tuple
+import Data.Ord (comparing)
+import Data.Maybe (fromJust)
+import Data.List (elemIndex)
 
 type ApplicationRule = forall t. (Foldable t, MonadPlus t) => t Expression -> Expression
 
@@ -26,6 +30,16 @@ instance Ord Precedence where
 	compare Prefix	_		= LT
 	compare _		Prefix	= GT
 	compare (Infix n1 _) (Infix n2 _) = compare n1 n2
+
+quickAndDirty :: [Expression] -> Expression
+quickAndDirty [e] = e
+quickAndDirty exps = case precedence splitter of
+	Prefix -> apply exps
+	Infix _ _ -> Application (Application splitter (quickAndDirty l)) $ quickAndDirty r
+	where
+		splitter = maximumBy (comparing precedence) exps
+		(l, _:r) = Prelude.splitAt (fromJust $ elemIndex splitter exps) exps
+
 
 rpnApply :: Expression -> [Expression] -> Expression
 rpnApply op [] = op

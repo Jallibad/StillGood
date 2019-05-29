@@ -10,35 +10,45 @@ import AST.Identifier (Identifier)
 import Control.Applicative (liftA2)
 import Control.Arrow ((&&&))
 import Control.Monad (replicateM)
+import Control.Monad.Trans.Except
+import Data.Map.Merge.Strict
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import HindleyMilner.Type (Type (..), typeCata)
+import HindleyMilner.TypeError (TypeError (..))
 
 -- |A type representing the known replacements between type variables and the their bound types
-newtype Subst = Subst {unsubst :: Map Identifier Type}
+newtype Subst = Subst {unsubst :: Except TypeError (Map Identifier Type)}
+
+throwIfMatched :: WhenMatched (Except TypeError) k Type Type Type
+throwIfMatched = zipWithAMatched $ const $ (throwE .) . UnificationFail
+
+combiningFunction :: Ord k => Map k Type -> Map k Type -> Except TypeError (Map k Type)
+combiningFunction = mergeA preserveMissing preserveMissing throwIfMatched
 
 instance Semigroup Subst where
-	(<>) s@(Subst m) = Subst . Map.union m . fmap (apply s) . unsubst
+	s1 <> s2 = Subst $ unsubst s1 >>= ((apply s1 <$> unsubst s2) >>=) . combiningFunction
+
 instance Monoid Subst where
-	mempty = Subst Map.empty
+	mempty = Subst $ return Map.empty
 
 -- |A substitution with a single Identifier and associated Type replacement
 single :: Identifier -> Type -> Subst
 single v t
 	| t == Variable v = mempty
-	| otherwise = Subst $ Map.singleton v t
+	| otherwise = Subst $ return $ Map.singleton v t
 
 makeSubst :: [Identifier] -> [Type] -> Subst
-makeSubst = ((Subst . Map.fromList) .) . zip
+makeSubst = ((Subst . return . Map.fromList) .) . zip
 
 freshSubst :: Applicative f => f Type -> [Identifier] -> f Subst
 freshSubst = (uncurry fmap .) . (&&&) makeSubst . flip (replicateM . length)
 
 -- |Removes collections of Identifiers from the substitution lookup
 removeSubstitutions :: Foldable f => Subst -> f Identifier -> Subst
-removeSubstitutions = (Subst .) . foldr Map.delete . unsubst
+removeSubstitutions (Subst s) is = Subst $ flip (foldr Map.delete) is <$> s
 
 -- |Instances of this class have potentially nested subexpressions, this helps us generically traverse them
 class Substitutable a where
@@ -60,7 +70,8 @@ instance Substitutable Type where
 	-- A type constructor contains nothing substitutable (base case)
 	-- In function application the function and argument should both be substituted recursively
 	apply (Subst s) = typeCata substitute Constructor Arrow
-		where substitute a = Map.findWithDefault (Variable a) a s
+		where
+			substitute a = either (const $ Variable a) id $ runExcept $ Map.findWithDefault (Variable a) a <$> s
 
 	-- A type variable is by itself a single free variable
 	-- A type constructor contains no free variables

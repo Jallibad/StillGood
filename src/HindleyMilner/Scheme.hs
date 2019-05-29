@@ -1,9 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module HindleyMilner.Scheme
-	( Scheme
+	( Scheme (..)
 	, generalize
 	, instantiate
+	, makeScheme
 	, reconstructScheme
 	-- * Lenses
 	, body
@@ -20,6 +21,9 @@ import HindleyMilner.Type (Type)
 
 data Scheme = Forall {_typeVars :: Set Identifier, _body :: Type} deriving (Show)
 makeLenses ''Scheme
+
+makeScheme :: Type -> Scheme
+makeScheme t = Forall (freeVars t) t
 
 -- |Add a `forall` to the type, binding the variables that we don't currently have substitutions for
 generalize :: Substitutable a => a -> Type -> Scheme

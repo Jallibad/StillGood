@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module HindleyMilner.Type
 	( Type (..)
 	, TypeF (..)
@@ -9,7 +11,9 @@ module HindleyMilner.Type
 
 import AST.Identifier (Identifier)
 import Data.Aeson
-import Data.Functor.Foldable
+import Data.Functor.Foldable (cata, para)
+import Data.Functor.Foldable.TH (makeBaseFunctor)
+import Data.String (IsString)
 import GHC.Generics (Generic)
 
 -- |Represents the type signature of a StillGood expression
@@ -18,24 +22,23 @@ data Type
 	| Constructor Identifier
 	| Arrow {input :: Type, output :: Type}
 	-- TODO Add application in the future to support type level functions
-	deriving (Generic, Show, Eq, Ord)
+	deriving (Generic, Eq)
+
 instance ToJSON Type where
 	toEncoding = genericToEncoding defaultOptions
 instance FromJSON Type
 
-data TypeF a
-	= VariableF Identifier
-	| ConstructorF Identifier
-	| ArrowF a a
-	-- TODO After adding application to Type add here to support recursive application
-	deriving (Generic, Show, Eq, Ord, Functor)
+makeBaseFunctor ''Type
 
-type instance Base Type = TypeF
+toString :: (Semigroup a, IsString a) => (Identifier -> a) -> Type -> a
+toString f = para $ \case
+	VariableF x -> "V@" <> f x
+	ConstructorF x -> "C@" <> f x
+	ArrowF (Arrow _ _, input) (_, output) -> "(" <> input <> ") -> " <> output
+	ArrowF (_, input) (_, output) -> input <> " -> " <> output
 
-instance Recursive Type where
-	project (Variable i) = VariableF i
-	project (Constructor i) = ConstructorF i
-	project (Arrow a b) = ArrowF a b
+instance Show Type where
+	show = toString show
 
 typeCata :: (Identifier -> a) -> (Identifier -> a) -> (a -> a -> a) -> Type -> a
 typeCata v c a = cata $ \case

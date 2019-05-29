@@ -13,6 +13,8 @@ data TypeError
 	| InfiniteType Identifier Type
 	| TooManyArguments -- TODO Add context details
 	| UnboundVariable Identifier
+	| InvalidBuiltIn String
+	| Deprecated
 	deriving (Generic, Show)
 
 instance ToJSON TypeError where
