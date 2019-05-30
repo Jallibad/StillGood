@@ -8,6 +8,7 @@ module HindleyMilner.TypedExp
 
 import AST.Expression (ExpressionF (..))
 import AST.Identifier (Identifier)
+import Control.Applicative (liftA2)
 import Data.Aeson
 import GHC.Generics (Generic)
 import HindleyMilner.Substitution (Substitutable (..))
@@ -40,6 +41,6 @@ instance ToJSON TypedExp where
 instance FromJSON TypedExp
 
 instance Substitutable TypedExp where
-	apply s (TypedExp e t) = TypedExp (apply s e) (apply s t)
+	apply s (TypedExp e t) = liftA2 TypedExp (apply s e) (apply s t)
 	freeVars = freeVars . expression
 	changeVariables f (TypedExp e t) = flip TypedExp t <$> changeVariables f e

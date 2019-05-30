@@ -14,10 +14,12 @@ module HindleyMilner.Scheme
 import AST.Identifier (Identifier)
 import Control.Arrow ((&&&), (***))
 import Control.Lens
+import Control.Monad.Trans.Except (Except)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import HindleyMilner.Substitution
 import HindleyMilner.Type (Type)
+import HindleyMilner.TypeError (TypeError)
 
 data Scheme = Forall {_typeVars :: Set Identifier, _body :: Type} deriving (Show)
 makeLenses ''Scheme
@@ -30,18 +32,17 @@ generalize :: Substitutable a => a -> Type -> Scheme
 generalize substs t = Forall (freeVars t `Set.difference` freeVars substs) t
 
 -- |Instantiate the type variables in a scheme with fresh ones
-instantiate :: Applicative f => Scheme -> f Type -> f Type
+instantiate :: Applicative f => Scheme -> f Type -> f (Except TypeError Type)
 instantiate (Forall as t) fresh = flip apply t <$> freshSubst fresh (Set.toList as)
 
 -- |Reconstructs a scheme given a type, a type variable list, and a type variable substitution lookup
 reconstructScheme :: Monad f => Type -> (Set Identifier, Identifier -> f Identifier) -> f Scheme
 reconstructScheme = (uncurry fmap .) . (***) Forall . flip changeVariables
 
-applyUnbound :: (Substitutable a, Substitutable b) => Subst -> a -> b -> b
+applyUnbound :: (Substitutable a, Substitutable b) => Subst -> a -> b -> Except TypeError b
 applyUnbound subst = apply . removeSubstitutions subst . freeVars
 
 instance Substitutable Scheme where
-	-- apply s (Forall as t) = Forall as $ apply (foldr Map.delete s as) t
-	apply subst scheme = (body %~ applyUnbound subst scheme) scheme
+	apply subst scheme = (mapMOf body $ applyUnbound subst scheme) scheme
 	freeVars = uncurry Set.difference . (freeVars . _body &&& _typeVars)
 	changeVariables = undefined
