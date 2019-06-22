@@ -15,7 +15,7 @@ data TypeError
 	| UnboundVariable Identifier
 	| InvalidBuiltIn String
 	| Deprecated
-	deriving (Generic, Show)
+	deriving (Eq, Generic, Show)
 
 instance ToJSON TypeError where
 	toEncoding = genericToEncoding defaultOptions

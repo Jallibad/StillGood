@@ -1,4 +1,4 @@
-module Main (main) where
+module StillGoodSpec where
 
 import AST.Parsable (parser)
 import qualified AST.Parsable as AST (Parser)
