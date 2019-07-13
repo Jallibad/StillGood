@@ -9,11 +9,15 @@ import Data.Map.Strict (insert)
 import Interpreter.Input (Input (..), getInput, runExpressionReader)
 import Interpreter.Program (Program)
 import Interpreter.ReductionStrategy (normalOrder, runReduction)
+import Interpreter.RuntimeExpression (getType)
 
 handleInput :: Input -> ReaderT (TVar Program) IO Bool
 handleInput (AddExp identifier expr) = do
 	prog <- ask
 	lift $ atomically $ modifyTVar' prog (insert identifier expr)
+	return True
+handleInput (PrintType expr) = do
+	lift $ print $ getType expr
 	return True
 handleInput (RunExp expr) = do
 	reduced <- runReduction $ normalOrder expr

@@ -52,7 +52,7 @@ getType = cata $ \case
 	LambdaF _ argType body -> Arrow argType body
 	ApplicationF function _ -> case function of
 			Arrow _ t -> t
-			_ -> error "Invalid Type (this should not happen)"
+			t -> error $ mconcat ["Invalid Type (",  show t, ")"]
 	NumericConstantF _ -> typeInt
 	x -> annotationF x
 

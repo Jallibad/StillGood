@@ -13,6 +13,7 @@ import Text.Megaparsec hiding (getInput)
 data Input
 	= AddExp Identifier RExpr
 	| RunExp RExpr
+	| PrintType RExpr
 	| Quit
 
 type ExpReader = ParserT (ReaderT Program (Except TypeError))
@@ -48,10 +49,13 @@ addExp = do
 runExp :: ExpReader Input
 runExp = RunExp <$> getExp
 
+printType :: ExpReader Input
+printType = cts (chunk ":t") >> PrintType <$> getExp
+
 quit :: ExpReader Input
 quit = do
 	cts $ chunk ":q"
 	return Quit
 
 getInput :: ExpReader Input
-getInput = addExp <|> runExp <|> quit
+getInput = addExp <|> printType <|> runExp <|> quit
