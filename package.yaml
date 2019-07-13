@@ -100,8 +100,8 @@ library:
   source-dirs: src/
 
 tests:
-  HindleyMilner-test:
-    main: HindleyMilner.hs
+  test:
+    main: Spec.hs
     source-dirs: test
     dependencies:
       - StillGood
