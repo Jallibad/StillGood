@@ -1,7 +1,11 @@
 module HindleyMilner.Substitution
-	( Subst
+	( Subst (..)
 	, Substitutable (..)
+	, coalesceTypeError
+	, empty
 	, freshSubst
+	, insert
+	, lookupSubst
 	, removeSubstitutions
 	, single
 	) where
@@ -25,22 +29,24 @@ newtype Subst = Subst {unsubst :: Except TypeError (Map Identifier Type)}
 instance Show Subst where
 	show = either show show . runExcept . unsubst
 
-throwIfMatched :: WhenMatched (Except TypeError) k Type Type Type
-throwIfMatched = zipWithAMatched $ const $ (throwE .) . UnificationFail
+lookupSubst :: Subst -> Identifier -> Maybe Type
+lookupSubst (Subst s) t = case runExcept s of
+	Right m -> m Map.!? t
+	_ -> Nothing
 
-combiningFunction :: Ord k => Map k Type -> Map k Type -> Except TypeError (Map k Type)
-combiningFunction = mergeA preserveMissing preserveMissing throwIfMatched
+insert :: Identifier -> Type -> Subst -> Subst
+insert tvar t (Subst s) = Subst $ Map.insert tvar t <$> s
 
-instance Semigroup Subst where
-	s1 <> s2 = Subst $ unsubst s1 >>= ((unsubst s2 >>= apply s1) >>=) . combiningFunction
+coalesceTypeError :: Except TypeError Subst -> Subst
+coalesceTypeError = either (Subst . throwE) id . runExcept
 
-instance Monoid Subst where
-	mempty = Subst $ return Map.empty
+empty :: Subst
+empty = Subst $ return Map.empty
 
 -- |A substitution with a single Identifier and associated Type replacement
 single :: Identifier -> Type -> Subst
 single v t
-	| t == Variable v = mempty
+	| t == Variable v = empty
 	| otherwise = Subst $ return $ Map.singleton v t
 
 makeSubst :: [Identifier] -> [Type] -> Subst
