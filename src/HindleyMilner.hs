@@ -8,7 +8,6 @@ module HindleyMilner
 	) where
 
 import AST.Expression (Expression (..), ExpressionF (..))
-import Control.Monad (join)
 import Control.Monad.Trans.Except
 import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy.Char8 as BS (putStrLn)
@@ -16,8 +15,7 @@ import Data.Either (fromRight)
 import Data.Functor.Foldable (para)
 import HindleyMilner.Environment (Environment, (!?), addNewVar)
 import HindleyMilner.Infer
--- import HindleyMilner.Scheme (Scheme, instantiate)
-import HindleyMilner.Substitution (Subst, apply')
+import HindleyMilner.Substitution (Subst, apply', unify)
 import HindleyMilner.Type (Type (..), typeInt, typeIO)
 import HindleyMilner.TypedExp (TypedExp (..))
 import HindleyMilner.TypeError (TypeError (..))
@@ -78,7 +76,7 @@ inferType env = para $ \case
 -- (<.>) = (.) . fmap
 
 addType :: Environment -> Expression -> Either TypeError TypedExp
-addType env expr = join $ runExcept . apply' <$> unwrapInfer (inferType env expr)
+addType env expr = unwrapInfer (inferType env expr) >>= (runExcept . apply')
 
 addType' :: Environment -> Expression -> Except TypeError TypedExp
 addType' = (except .) . addType

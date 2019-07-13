@@ -2,12 +2,12 @@ module HindleyMilner.Substitution
 	( Subst (..)
 	, Substitutable (..)
 	, coalesceTypeError
-	, empty
 	, freshSubst
 	, insert
 	, lookupSubst
 	, removeSubstitutions
 	, single
+	, unify
 	) where
 
 import AST.Identifier (Identifier)
@@ -15,7 +15,6 @@ import Control.Applicative (liftA2)
 import Control.Arrow ((&&&))
 import Control.Monad (replicateM)
 import Control.Monad.Trans.Except
-import Data.Map.Merge.Strict
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -40,13 +39,10 @@ insert tvar t (Subst s) = Subst $ Map.insert tvar t <$> s
 coalesceTypeError :: Except TypeError Subst -> Subst
 coalesceTypeError = either (Subst . throwE) id . runExcept
 
-empty :: Subst
-empty = Subst $ return Map.empty
-
 -- |A substitution with a single Identifier and associated Type replacement
 single :: Identifier -> Type -> Subst
 single v t
-	| t == Variable v = empty
+	| t == Variable v = mempty
 	| otherwise = Subst $ return $ Map.singleton v t
 
 makeSubst :: [Identifier] -> [Type] -> Subst
@@ -58,6 +54,38 @@ freshSubst = (uncurry fmap .) . (&&&) makeSubst . flip (replicateM . length)
 -- |Removes collections of Identifiers from the substitution lookup
 removeSubstitutions :: Foldable f => Subst -> f Identifier -> Subst
 removeSubstitutions (Subst s) is = Subst $ flip (foldr Map.delete) is <$> s
+
+instance Semigroup Subst where
+	s1 <> s2 = thing s1 $ unsubst s2 >>= apply s1
+
+thing :: Subst -> Except TypeError (Map Identifier Type) -> Subst
+thing = (coalesceTypeError .) . fmap . Map.foldrWithKey combine
+	where
+		combine :: Identifier -> Type -> Subst -> Subst
+		combine tvar t subst = maybe
+			(insert tvar t subst)
+			((<>) subst . coalesceTypeError . unify t)
+			$ subst `lookupSubst` tvar
+
+instance Monoid Subst where
+	mempty = Subst $ return Map.empty
+
+-- |Attempts to create a substitution between the given identifier
+-- and type, failing if the identifier occurs in the type.
+bind :: Monad m => Identifier -> Type -> ExceptT TypeError m Subst
+bind a t = if occurs a t
+	then throwE $ InfiniteType a t
+	else pure $ single a t
+
+-- |Attempt to unify the given types. Fails if the given types are not alpha equivalent
+unify :: Monad m => Type -> Type -> ExceptT TypeError m Subst
+unify (l1 `Arrow` r1) (l2 `Arrow` r2) = liftA2 (<>) (unify l1 l2) (unify r1 r2)
+unify (Variable a) (Variable b) | a <= b = return $ single b (Variable a)
+	-- | otherwise = return $ single a (Variable b)
+unify (Variable a) t = bind a t
+unify t (Variable a) = bind a t
+unify (Constructor a) (Constructor b) | a == b = return mempty
+unify t1 t2 = throwE $ UnificationFail t1 t2
 
 -- |Instances of this class have potentially nested subexpressions, this helps us generically traverse them
 class Substitutable a where
